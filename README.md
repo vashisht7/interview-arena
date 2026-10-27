@@ -2,8 +2,10 @@
 
 Personal AI and data engineering interview practice dashboard.
 
-- 32 concise spoken answers with memory cues and interviewer follow-ups
-- 45- and 90-second practice rounds
+- 76 concise answers across four rounds: experience, technical depth, coding/design, and mock interviews
+- 45-second to 5-minute practice timers
+- Eight-question mixed mock interviews with saved self-assessment and review
+- Tested SQL and Python reference solutions, plus system-design drills
 - Browser-local notes, self-checks, and progress
 - Evidence notes distinguish experience from recommended designs
 
@@ -14,6 +16,12 @@ https://vashisht7.github.io/interview-arena/
 ## Hosting
 
 GitHub Pages serves the repository root on the `main` branch. Push changes to update the site. No build or server is required.
+
+## Practice path
+
+Start with **Round 1: Explain your work**, then progress through technical depth and coding/design. Round 4 includes pressure questions and a mixed mock interview. Project reference is optional background material.
+
+Scores are self-assessments, not automatic grading. Coding examples are displayed for review and are not executed in the browser. Behavioral questions requiring a personal incident are labeled.
 
 ## Local preview
 
