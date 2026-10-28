@@ -2,7 +2,7 @@
 
 Personal AI and data engineering interview practice dashboard.
 
-- 76 concise answers across four rounds: experience, technical depth, coding/design, and mock interviews
+- 106 concise answers across five rounds: experience, technical depth, coding/design, and mock interviews
 - 45-second to 5-minute practice timers
 - Eight-question mixed mock interviews with saved self-assessment and review
 - Tested SQL and Python reference solutions, plus system-design drills
@@ -28,3 +28,7 @@ Scores are self-assessments, not automatic grading. Coding examples are displaye
 Run `python3 -m http.server 8000` in this directory and open http://localhost:8000.
 
 Browser notes and progress are saved for the current website origin. They do not automatically transfer from a different host.
+
+## Friday interview focus
+
+Round 5 adds 30 role-specific questions and a targeted eight-question mock. Open https://vashisht7.github.io/interview-arena/#friday. See [the preparation guide](friday-preparation.md) for the coverage audit, schedule, and answer bank.

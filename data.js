@@ -1,2 +1,2188 @@
-const cards=[{"project": "bofa", "title": "Explain your Bank of America work", "q": "Walk me through the tax-document extraction system you built.", "label": "Confirmed story", "answer": "I built a Qwen 3 extraction workflow for tax-department documents at Bank of America. It handled digital PDFs and spreadsheets and extracted workflow IDs, dates, vendors, and amounts into validated JSON. I owned the work end to end: data preparation, fine-tuning, OCR integration, evaluation, APIs, and the review UI. My focus was getting usable data into downstream workflows, with review where needed.", "hint": "Lead with the business problem, then inputs → model → validation → delivery, and end with your ownership.", "trap": "Why use OCR if the inputs were digital PDFs?", "rubric": ["Names the input and four fields", "Explains end-to-end ownership", "Separates remembered facts from unknown details"], "cue": "Problem → four fields → end-to-end ownership", "reply": "Digital PDFs may contain embedded images or unreliable text. I would extract native text first and use OCR only where needed.", "evidence": "User-confirmed scope plus résumé. Model size, training settings, hosting, exact savings methodology and historical incidents remain unverified.", "seconds": 45, "id": "legacy-0", "round": 1}, {"project": "bofa", "title": "Why an LLM at all?", "q": "Why use Qwen 3 instead of rules or a spreadsheet parser?", "label": "Recommended approach", "answer": "I would parse spreadsheets directly and extract native text from digital PDFs first. Qwen earns its place when layouts and field names vary enough that semantic interpretation helps. I would compare it with rules on the same held-out documents and judge field accuracy, review effort, latency, and cost. The model should handle ambiguity; ordinary parsing should stay deterministic.", "hint": "Separate document parsing from semantic field mapping.", "trap": "If the spreadsheet already has a vendor column, why send it to an LLM?", "rubric": ["Starts with direct parsing", "Explains when a model adds value", "Defines a measurable baseline"], "cue": "Parse first → model ambiguity → measure value", "reply": "If a vendor column is reliable, I would read it directly. Sending it through a model adds cost and another opportunity for error.", "evidence": "Recommended design, not confirmed historical architecture. Use “I would” when discussing unverified details.", "seconds": 45, "id": "legacy-1", "round": 1}, {"project": "bofa", "title": "Design the fine-tuning run", "q": "You do not remember your training configuration. What would you choose today?", "label": "Recommended approach", "answer": "I do not recall the exact training configuration. For this use case, I would benchmark a prompted Qwen baseline first, then try QLoRA if recurring extraction errors justify adaptation. I would train on document-to-JSON examples, include missing and ambiguous fields, and split by document family. The winning setup is the smallest one that meets field-accuracy, latency, and review requirements.", "hint": "Explain the choice, its constraints, and how you would validate it.", "trap": "Why not start with full fine-tuning?", "rubric": ["Clearly frames a proposed design", "Explains frozen base and adapters", "Addresses leakage and baseline comparison"], "cue": "Baseline → targeted adaptation → held-out fields", "reply": "Full fine-tuning is more expensive. I would start with adapters and only increase training complexity if controlled evaluation shows a clear benefit.", "evidence": "Qwen3 4B and 8B are possible experimental candidates, not remembered model sizes. No universal best size or invented training count.", "seconds": 45, "id": "legacy-2", "round": 1}, {"project": "bofa", "title": "Valid JSON. Wrong money.", "q": "The output is valid JSON, but the amount belongs to the wrong vendor. What now?", "label": "Recommended approach", "answer": "Valid JSON only proves structure. I would trace each amount back to its source, check its vendor and currency, and distinguish totals from subtotals and tax. Conflicting evidence goes to review. Then I would locate the error in parsing, extraction, or mapping and add that case to the regression set.", "hint": "Think about relationships, source evidence, and exception routing.", "trap": "The model says it is 99% confident. Can it auto-approve?", "rubric": ["Separates schema from correctness", "Uses source evidence and field relationships", "Does not trust uncalibrated self-confidence"], "cue": "Structure ≠ correctness → evidence → regression", "reply": "No. A model’s self-reported confidence is not a calibrated probability. Any automatic approval threshold needs validation against labeled outcomes.", "evidence": "Recommended design. This is a hypothetical failure scenario, not an incident you said occurred.", "seconds": 45, "id": "legacy-3", "round": 1}, {"project": "bofa", "title": "The metric cross-examination", "q": "How would you defend the estimated 50–60% manual-effort reduction?", "label": "Recommended approach", "answer": "The 50–60% figure on my résumé is an estimate, not a controlled benchmark. To substantiate it, I would compare total human handling time before and after, including review, corrections, and exceptions, across comparable documents. Faster extraction only matters if the complete workflow takes less effort without sacrificing quality.", "hint": "Include human review and errors in the denominator.", "trap": "Did time saved in extraction just move to reviewers?", "rubric": ["Labels the historical number as estimated", "Includes total human handling time", "Controls document mix and checks quality"], "cue": "Estimate → total handling time → quality", "reply": "Then the measurement is incomplete. I would include reviewer time and compare the full workflow, not just extraction.", "evidence": "Do not invent sample size, baseline minutes, or a measured causal result. Verify the original basis before quoting the number as proven.", "seconds": 45, "id": "legacy-4", "round": 1}, {"project": "bofa", "title": "The duplicate-delivery incident", "q": "The API accepted your result, but your job timed out. Is retrying safe?", "label": "Recommended approach", "answer": "A timeout does not mean the write failed. I would give each delivery a stable idempotency key, enforce it atomically at the destination, and persist delivery status. On an ambiguous timeout, I would reconcile before retrying. That prevents a successful delivery from becoming a duplicate.", "hint": "A timeout does not prove the write failed.", "trap": "Two workers both check for the same key. What stops the race?", "rubric": ["Defines a stable operation identity", "Requires atomic destination enforcement", "Handles ambiguous completion"], "cue": "Timeout ≠ failure → stable key → atomic write", "reply": "A database uniqueness constraint or atomic conditional write. A separate existence check followed by an insert is vulnerable to races.", "evidence": "Recommended approach; not a claim that a specific destination or API supported this in your implementation.", "seconds": 45, "id": "legacy-5", "round": 1}, {"project": "bofa", "title": "MCP is not a quality metric", "q": "You used MCP retrieval. How does that make answers accurate?", "label": "Recommended approach", "answer": "MCP provides a way to expose retrieval; it does not guarantee answer quality. I would check that retrieval returns authorized, current evidence and that the answer actually follows it. If evidence is missing or conflicting, the system should clarify or abstain. I would evaluate retrieval and generation separately.", "hint": "Separate access, retrieval relevance, and answer grounding.", "trap": "Can a grounded answer still be wrong?", "rubric": ["Distinguishes transport from quality", "Checks freshness and permissions", "Explains grounded but outdated evidence"], "cue": "Access → evidence → supported answer", "reply": "Yes. An answer can faithfully repeat an outdated source. Grounding establishes support, not necessarily truth.", "evidence": "Your résumé establishes MCP-based retrieval. Exact indexing, access controls and evaluation implementation are not yet supplied.", "seconds": 45, "id": "legacy-6", "round": 1}, {"project": "bofa", "title": "The architecture whiteboard", "q": "Design the tax-document pipeline for bursts, review, and safe reprocessing.", "label": "Recommended approach", "answer": "I would separate ingestion, parsing, extraction, validation, review, and delivery. A durable queue absorbs bursts; versioned inputs and outputs support replay; idempotent delivery prevents duplicates. I would monitor queue age, field errors, review rate, latency, and cost. Before sizing workers, I would ask about peak traffic, document sizes, and the latency target.", "hint": "Include recovery and human review, not just components.", "trap": "How do you reprocess a document without overwriting an approved correction?", "rubric": ["Asks for scale and latency", "Includes versioning and human corrections", "Explains capacity and failure recovery"], "cue": "Queue → validate → version → replay", "reply": "I would preserve the approved correction as a separate authoritative version, then stage reprocessed output for comparison rather than silently overwriting it.", "evidence": "Recommended architecture. Do not describe queue technology, deployment topology or throughput as historical facts.", "seconds": 45, "id": "legacy-7", "round": 1}, {"project": "notes", "title": "The synthetic benchmark trap", "q": "What does 96.3% action-field exact match on 1,080 synthetic cases actually prove?", "label": "Report-backed · synthetic result", "answer": "The 96.3% result is 1,040 of 1,080 synthetic action cases matching seven selected fields, with the operational checks also passing. It is not full-response or real-user accuracy. The report also found normalized template overlap with training, so I treat it as a regression benchmark. My next step would be an independently written holdout and a matched base-model comparison.", "hint": "Do not turn a synthetic test score into a real-user success claim.", "trap": "Would you accept that error rate for destructive actions?", "rubric": ["Defines metric scope", "Challenges leakage and representativeness", "Considers failure severity"], "cue": "1,040/1,080 → selected fields → template limitation", "reply": "No. For destructive actions, accuracy alone is insufficient; execution also needs authorization, state checks, and a safe failure path.", "evidence": "Supplied NoteEchoes report: saved outputs were rescored, inference was not rerun. Selected fields: intent, mode, items, entities, draft, requires_confirmation, proposed_tool. No established improvement over stock Qwen.", "seconds": 45, "id": "legacy-8", "round": 1}, {"project": "rag", "title": "The retrieval autopsy", "q": "Your codebase assistant cites code but gives the wrong answer. How do you debug it?", "label": "Recommended RAG design", "answer": "I would debug retrieval before changing the prompt. First, check whether the correct repository version and relevant code reached the model. Then inspect chunk boundaries, ranking, missing dependencies, and whether the answer follows the evidence. I would evaluate retrieval and generation separately and turn the failure into a regression case.", "hint": "Find the first stage where the right evidence is lost.", "trap": "What stops self-correcting search from looping forever?", "rubric": ["Separates retrieval and generation", "Checks stale indexes and code context", "Requires bounded retries and evaluation"], "cue": "Find evidence → inspect ranking → verify answer", "reply": "A fixed search-step budget, a time budget, and a stop condition when evidence no longer improves. Without enough evidence, return a qualified answer or ask for clarification.", "evidence": "Proposed RAG design. Your résumé establishes LangGraph, Claude, Pinecone, asynchronous retrieval and Ragas; exact graph, metrics and operational behavior remain unverified.", "seconds": 45, "id": "legacy-9", "round": 1}, {"project": "mflash", "title": "Crash between two worlds", "q": "A file moved, but the database journal still says pending. Recover safely.", "label": "Report-backed implementation", "answer": "The file system and SQLite are not one atomic transaction. In MFlash’s safer move path, a prepared journal record comes first, then the file operation and verification, then commitment. Recovery checks actual file contents before restoring or finalizing. If the original path is occupied, undo uses a collision-safe alternative instead of overwriting newer data.", "hint": "Model the crash window explicitly.", "trap": "Why is SQLite WAL not sufficient by itself?", "rubric": ["Recognizes cross-system atomicity gap", "Reconciles instead of blind retry", "Protects newer state during undo"], "cue": "Prepared record → verify bytes → safe undo", "reply": "WAL protects database consistency. It does not make an external file operation part of the same transaction, so crash windows still need reconciliation.", "evidence": "Based on supplied MFlash code-review report. The safer move path uses a destination hard link, verification, source unlink and database update. This is recoverable evidence, not a global exactly-once guarantee.", "seconds": 45, "id": "legacy-10", "round": 1}, {"project": "data", "title": "The skewed Spark job", "q": "A 5 TB/day pipeline slows down. One key owns 40% of the records. What do you do?", "label": "Recommended approach", "answer": "I would inspect the execution plan, task durations, shuffle, spill, and partition sizes first. A key containing 40% of records can overload one partition even after adding workers. Depending on the operation, I would consider pre-aggregation, a separate hot-key path, or carefully designed salting, then verify correctness and compare runtime and cost.", "hint": "Do not prescribe resources before locating the bottleneck.", "trap": "How can salting accidentally duplicate results?", "rubric": ["Diagnoses from metrics", "Explains hot-key behavior", "Checks correctness and cost"], "cue": "Measure → locate skew → validate fix", "reply": "If the join sides are replicated or salted inconsistently, matching rows can be multiplied or lost. I would verify key-level cardinality and aggregates.", "evidence": "Recommended diagnosis for a hypothetical incident; do not imply this was a specific Sedin production failure.", "seconds": 45, "id": "legacy-11", "round": 1}, {"project": "notes", "title": "Explain NoteEchoes", "q": "Tell me about NoteEchoes in under a minute.", "answer": "I built NoteEchoes to turn spoken thoughts and imported documents into organized, searchable notes. It combines Flutter and Swift with a specialized Qwen3-0.6B model running locally through MLX. The key design is saving the note before AI enhancement, then validating the result and rejecting it if the user has edited the note. That keeps capture useful even when generation fails.", "cue": "Capture → local Qwen → save before AI", "trap": "Is every part of the app offline?", "reply": "No. Core inference and storage are local, but model downloads, optional web lookup and feedback, and some speech fallback paths can use the network.", "evidence": "Project implementation is supported by the supplied report; personal ownership comes from your résumé. Current TestFlight status, user adoption and device performance were not verified.", "label": "Report-backed implementation", "hint": "Use this sequence: Capture → local Qwen → save before AI", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-12", "round": 1}, {"project": "notes", "title": "Why such a small model?", "q": "Why Qwen3-0.6B for NoteEchoes?", "answer": "The task is constrained intent and action interpretation, which makes a small specialized model a reasonable fit for an iPhone. The implementation uses Qwen3-0.6B with structured validation, while document answers use cited excerpts. I would justify the final model choice with device latency, memory, and task-quality measurements rather than parameter count alone.", "cue": "Constrained task → device fit → measure", "trap": "How much faster is it than a larger model?", "reply": "I do not have a verified comparative device benchmark. I would measure cold start, warm latency, memory and battery under the same workload.", "evidence": "The report confirms Qwen3-0.6B and local MLX configuration. Device benchmark results and the original model-selection rationale are unknown. Rationale here is a design explanation, not measured evidence.", "label": "Report-backed implementation", "hint": "Use this sequence: Constrained task → device fit → measure", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-13", "round": 1}, {"project": "notes", "title": "Explain your fine-tuning", "q": "How is the NoteEchoes model adapted?", "answer": "The training pipeline adapts pretrained Qwen3-0.6B with QLoRA and rsLoRA. It keeps the base in four-bit NF4 and trains adapters on the expected completions, with prompt tokens masked from the loss. Deployment is a separate eight-bit MLX artifact. The distinction is important: training quantization and inference quantization are different stages.", "cue": "Pretrained base → completion loss → separate deployment", "trap": "What are the adapter settings?", "reply": "The inspected initial configuration uses rank 32, alpha 64, and dropout 0.05, targeting attention and MLP projections. I would check the run artifacts before saying those settings produced the deployed checkpoint.", "evidence": "Supplied report confirms configuration, not a complete training-to-shipped-weights chain. Initial learning rate 4e-5; one epoch; sequence length 1,024. No established contribution from the experimental GRPO code.", "label": "Report-backed implementation", "hint": "Use this sequence: Pretrained base → completion loss → separate deployment", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-14", "round": 1}, {"project": "notes", "title": "A user edits during generation", "q": "What happens if AI finishes after the user edits a note?", "answer": "The note is saved first. Before enhancement starts, the service records a fingerprint; before applying the result, it checks the current note against that snapshot. If the user edited or deleted it, the AI result is discarded. The user’s newer state takes precedence over delayed generation.", "cue": "Save → fingerprint → reject stale output", "trap": "Does a timeout stop the underlying model?", "reply": "Not necessarily. A timeout can stop waiting without stopping native computation. The stale-result checks still matter even after the UI has moved on.", "evidence": "Report describes inspected implementation and tests, but those application tests and device behavior were not executed in the review.", "label": "Report-backed implementation", "hint": "Use this sequence: Save → fingerprint → reject stale output", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-15", "round": 1}, {"project": "notes", "title": "Explain hybrid retrieval", "q": "How does NoteEchoes find the right note?", "answer": "It combines SQLite full-text search with optional multilingual E5 embeddings and merges their rankings using reciprocal rank fusion. Lexical search catches exact terms; semantic search catches related meaning. The active conversation and PDF paths return cited excerpts. That keeps the answer tied to the stored material rather than asking the action model to improvise document answers.", "cue": "Exact terms + meaning → rank fusion → excerpts", "trap": "Is the knowledge graph a reasoning engine?", "reply": "It organizes related notes into topics and displays topic membership. I would describe it as a note-and-topic graph, not an entity-reasoning engine.", "evidence": "Report: FTS5/BM25; multilingual-e5-small, 384 dimensions; RRF 1/(60+rank); up to 15 candidates per retrieval branch, six final by default. No learned reranker in this path; quality metrics unverified.", "label": "Report-backed implementation", "hint": "Use this sequence: Exact terms + meaning → rank fusion → excerpts", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-16", "round": 1}, {"project": "notes", "title": "What would you improve?", "q": "What is the biggest weakness in NoteEchoes today?", "answer": "The biggest evaluation gap is generalization. The synthetic score is useful for regressions, but normalized templates overlap with training and there is no completed matched base-model comparison. I would first build an independent real-language holdout, then measure device performance and strengthen failed-document retry handling.", "cue": "Known gap → independent evaluation → recovery", "trap": "What is the failed-document issue?", "reply": "The review found that a failed PDF can be recognized by its existing hash and returned without checking completion. I would make deduplication status-aware so failed ingestion can be retried safely.", "evidence": "The failed-PDF case is inferred from inspected code, not a reproduced or personally reported historical incident. Proposed improvements are not completed features.", "label": "Report-backed implementation", "hint": "Use this sequence: Known gap → independent evaluation → recovery", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-17", "round": 1}, {"project": "mflash", "title": "Explain MFlash", "q": "What makes MFlash an engineering project rather than a model demo?", "answer": "I built MFlash as a macOS assistant for local document retrieval and scoped file operations. It separates action suggestions from execution policy: supported actions pass through argument, authorization, and state checks before execution. The file paths include hashes, retry receipts, journaling, and collision-safe undo. The strongest part is controlling what happens around a model decision, not just generating the decision.", "cue": "Local assistant → execution boundary → recovery", "trap": "Is it a production-ready computer-use agent?", "reply": "It is a design preview with supported workflows and experimental visual paths. I would demonstrate specific tested operations rather than claim general autonomous reliability.", "evidence": "Supplied MFlash report. Personal project ownership is résumé-based; the code review itself cannot establish authorship or adoption. Ordinary scheduler policy and explicit workbench approval are distinct.", "label": "Report-backed implementation", "hint": "Use this sequence: Local assistant → execution boundary → recovery", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-18", "round": 1}, {"project": "mflash", "title": "Why two decision models?", "q": "How do the classifier and MPNet ranker differ?", "answer": "The classifier maps request and observation features to an action template. The MPNet ranker compares a state with supplied candidate actions using learned projection heads. One selects a structured pattern; the other ranks alternatives. Neither model’s score grants permission to execute—the execution layer makes that decision separately.", "cue": "Template selection → candidate ranking → separate authority", "trap": "Are 74 templates the same as 74 tools?", "reply": "No. That is the template count from a historical training run. Templates include argument-binding patterns, so it is not a count of independent tools or universal capabilities.", "evidence": "Report: random-initialized MLP classifier; frozen all-mpnet-base-v2 backbone with distinct state/action projection heads. The 74 count is data-derived and historical.", "label": "Report-backed implementation", "hint": "Use this sequence: Template selection → candidate ranking → separate authority", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-19", "round": 1}, {"project": "mflash", "title": "Defend the perfect ranker score", "q": "Your ranker got 100%. Why is that not enough?", "answer": "The recorded score is 1,381 out of 1,381 development candidate sets. The correct action was already supplied among the choices. That measures ranking, not discovering actions, understanding the screen, executing safely, or completing a workflow. I would validate real task completion separately before making an automation reliability claim.", "cue": "Development candidates → narrow metric → task success", "trap": "Were the negative examples mined online?", "reply": "The inspected data generators use authored alternatives and sampled distractors. Online hard-negative mining and their measured difficulty were not established.", "evidence": "The score is from a saved report and was not rerun. Do not call it a fresh held-out test or 100% automation accuracy.", "label": "Report-backed implementation", "hint": "Use this sequence: Development candidates → narrow metric → task success", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-20", "round": 1}, {"project": "mflash", "title": "Why contrastive learning?", "q": "Explain the ranking objective without jargon.", "answer": "The ranker learns to score the correct action above plausible alternatives for the same state. MPNet supplies text representations; trainable projection heads learn how state and action representations should align. The loss penalizes competing negatives that score too highly. This trains selection among candidates rather than free-form action generation.", "cue": "Correct action > alternatives → learned alignment", "trap": "Did you use in-batch negatives?", "reply": "There are two recipes: one mixes hard-negative and symmetric in-batch losses, while another compares each example with its own negatives. I would identify the checkpoint’s recipe before attributing either to it.", "evidence": "Report records two distinct training scripts. Which full recipe produced the current root checkpoint is unknown.", "label": "Report-backed implementation", "hint": "Use this sequence: Correct action > alternatives → learned alignment", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-21", "round": 1}, {"project": "mflash", "title": "Changed file after approval", "q": "What if the source file changes after a workbench preview?", "answer": "The workbench captures a source digest and checks the action against the trusted grant before execution. It recomputes the digest and rejects a changed source. If an earlier attempt is still pending, it requires review instead of blindly retrying. Approval applies to the reviewed operation and state, not whatever happens to exist later.", "cue": "Preview digest → grant match → reject changes", "trap": "What evidence do you have that this works?", "reply": "The supplied review ran 12 isolated executor tests covering cases such as retries, cancellation, collisions, and changed sources. That supports those tested paths, not all production workflows.", "evidence": "Test result is reported by the supplied briefing, not rerun in this interview-dashboard task. External-process races are not fully covered by the executor guarantees.", "label": "Report-backed implementation", "hint": "Use this sequence: Preview digest → grant match → reject changes", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-22", "round": 1}, {"project": "rag", "title": "Explain your RAG assistant", "q": "Give me a concise overview of the codebase assistant.", "answer": "I built a codebase assistant using LangGraph, Claude, Pinecone, and FastAPI, with asynchronous retrieval and self-correcting search. The aim was to answer developer questions using repository evidence. The key engineering issue is separating missing evidence from poor generation: a better prompt cannot recover code that retrieval never found.", "cue": "Developer questions → repository evidence → diagnose retrieval", "trap": "What did the evaluation prove?", "reply": "My résumé lists Ragas evaluation, but I do not have the run results here. I would discuss the evaluation dimensions without inventing an improvement percentage.", "evidence": "Opening uses résumé claims. No repository briefing was supplied for this project; exact agent roles, embeddings, chunking and results remain unverified.", "label": "Résumé-backed overview", "hint": "Use this sequence: Developer questions → repository evidence → diagnose retrieval", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-23", "round": 1}, {"project": "rag", "title": "Design the graph", "q": "What would a sensible LangGraph workflow look like?", "answer": "I would use a small, explicit workflow: understand the question, retrieve code, inspect evidence gaps, then answer with source references. If evidence is weak, rewrite the query and retry within a strict budget. I would track retrieved files, repository version, and attempted queries in state so retries add information instead of repeating the same search.", "cue": "Question → retrieve → inspect → answer", "trap": "Why not use more agents?", "reply": "Every extra agent adds latency, cost, and coordination failure modes. I would add one only when a controlled evaluation shows that its responsibility improves the result.", "evidence": "Proposed design for the résumé project, not a recovered description of its actual graph. No fabricated production outcomes.", "label": "Recommended RAG design", "hint": "Use this sequence: Question → retrieve → inspect → answer", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-24", "round": 1}, {"project": "rag", "title": "Chunking and freshness", "q": "How would you index a changing codebase?", "answer": "I would chunk around functions and classes where possible, preserve file paths and symbols, and attach a repository revision to every chunk. Changes should trigger targeted reindexing and removal of deleted code. At query time, I would combine exact symbol lookup with semantic retrieval and include enough surrounding context to understand dependencies.", "cue": "Symbol boundaries → revision metadata → targeted updates", "trap": "Would you always use a reranker?", "reply": "No. I would add one only if ranking errors justify its latency and cost on representative queries.", "evidence": "Recommended indexing approach; parser, embedding model, chunk sizes, incremental indexing and reranking are not confirmed implementation details.", "label": "Recommended RAG design", "hint": "Use this sequence: Symbol boundaries → revision metadata → targeted updates", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-25", "round": 1}, {"project": "experience", "title": "Tell me about yourself", "q": "Give me your introduction in 45 seconds.", "answer": "I’m an AI engineer with a foundation in data engineering. At Bank of America, I build document-extraction and retrieval workflows, owning work from data preparation through APIs and user review. Earlier, I worked on Spark and Databricks pipelines at Sedin. My projects extend that experience into local AI and controlled automation. The common thread is turning model outputs into systems people can actually use.", "cue": "AI role → data foundation → usable systems", "trap": "Why are you targeting AI engineering?", "reply": "I enjoy the boundary between models and software: choosing the task, preparing the data, evaluating behavior, and building reliable execution around it. My experience spans that full path.", "evidence": "Résumé and supplied project reports. No new metrics, employers, responsibilities, or adoption claims introduced.", "label": "Résumé-backed experience", "hint": "Use this sequence: AI role → data foundation → usable systems", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-26", "round": 1}, {"project": "experience", "title": "Your contribution at Sedin", "q": "What did you do at Sedin Technologies?", "answer": "At Sedin, I worked on Databricks ETL and ELT pipelines using Spark, PySpark, Python, and SQL, processing over 5 TB of transactional data daily. I also developed backend services and NLP summarization pipelines. That experience gave me the data-processing foundation I now bring to AI workflows: transforming inputs, integrating services, and evaluating outputs.", "cue": "5 TB/day → Spark pipelines → AI foundation", "trap": "Was 5 TB your personal throughput improvement?", "reply": "No. It describes the processing scale stated on my résumé, not an improvement percentage or an individual benchmark. I would explain my specific pipeline contribution separately.", "evidence": "Résumé-backed. Source formats, cluster size, scheduling, table design and actual incidents have not been supplied.", "label": "Résumé-backed experience", "hint": "Use this sequence: 5 TB/day → Spark pipelines → AI foundation", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-27", "round": 1}, {"project": "experience", "title": "Your Cactus Club project", "q": "Describe the file-sharing application you built.", "answer": "At Cactus Club, I built an internal React file-sharing application for about 200 users, supporting files up to 10 MB. It used Cognito authentication, encrypted S3 storage, and DynamoDB for sharing history and audit metadata. I also implemented key-pair generation and recipient-only decryption, connecting the user experience with access and data protection.", "cue": "User need → storage/access → recipient decryption", "trap": "Does encrypted S3 storage mean only the recipient can decrypt?", "reply": "No. Storage encryption and recipient-only decryption are separate protections. I would explain the key ownership and client decryption flow from the implementation before claiming end-to-end guarantees.", "evidence": "Résumé-backed. Cryptographic algorithms, private-key storage, recovery and threat-model details are not supplied.", "label": "Résumé-backed experience", "hint": "Use this sequence: User need → storage/access → recipient decryption", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-28", "round": 1}, {"project": "experience", "title": "Explain your summarization work", "q": "How did your earlier NLP summarization pipeline work?", "answer": "At Sedin, I worked on extractive summarization using TF-IDF, PageRank, and PySpark, with ROUGE for evaluation. The approach selects important source sentences instead of generating new ones. The tradeoff is easier source traceability, but sentence selection can still lose context or produce a disjointed summary.", "cue": "Extractive → source sentences → quality tradeoff", "trap": "Does a high ROUGE score prove a good summary?", "reply": "No. ROUGE measures overlap with reference text. I would also assess coverage, redundancy, coherence, and whether the summary preserves the source’s meaning.", "evidence": "Résumé confirms the named methods. Exact graph construction, preprocessing and measured ROUGE results remain unknown.", "label": "Résumé-backed experience", "hint": "Use this sequence: Extractive → source sentences → quality tradeoff", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-29", "round": 1}, {"project": "experience", "title": "Lead with ownership", "q": "What does end-to-end ownership mean in your Bank of America role?", "answer": "I worked directly with clients to understand the extraction requirements, prepared training data, integrated the model into the processing workflow, and built validation, APIs, and the review UI. That meant connecting the requested fields to a usable downstream output and keeping the review process part of the product—not treating the model as the whole solution.", "cue": "Requirements → implementation → usable delivery", "trap": "How did you prioritize requirements?", "reply": "I would prioritize critical fields and failure consequences first, define acceptance examples with stakeholders, and separate must-have correctness from convenience features.", "evidence": "Ownership is user-confirmed and résumé-supported. Prioritization answer is a recommended method, not a supplied historical process.", "label": "Confirmed experience", "hint": "Use this sequence: Requirements → implementation → usable delivery", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-30", "round": 1}, {"project": "experience", "title": "A credible weakness answer", "q": "What would you improve in one of your projects?", "answer": "For NoteEchoes, I would strengthen the evaluation before adding more model complexity. The existing synthetic benchmark catches regressions, but template overlap limits what it says about unfamiliar requests. I would add an independent human-authored holdout, compare against the base model under matched settings, and measure actual device performance.", "cue": "Specific gap → concrete plan → measurable outcome", "trap": "Would you remove the 96.3% result?", "reply": "I would keep it only with its exact scope: selected action fields on synthetic cases. I would not present it as general real-world accuracy.", "evidence": "Grounded in the supplied NoteEchoes review. These are proposed improvements, not completed work.", "label": "Report-backed reflection", "hint": "Use this sequence: Specific gap → concrete plan → measurable outcome", "rubric": ["Led with a direct answer", "Explained one concrete decision", "Stayed within the evidence and handled the tradeoff"], "seconds": 45, "id": "legacy-31", "round": 1}, {"id": "round-2-32", "round": 2, "project": "fundamentals", "title": "Fine-tuning, RAG, or prompting?", "q": "A new document workflow performs poorly. How do you choose between prompting, RAG, and fine-tuning?", "answer": "I would first classify the failure. Missing external knowledge points toward retrieval. Inconsistent behavior or output mapping may justify fine-tuning after a strong prompt baseline. Format failures may need constrained output and validation. I would compare the simplest viable approaches on the same held-out examples, using task accuracy, latency, cost, and review effort.", "cue": "Diagnose → baseline → compare", "trap": "Can fine-tuning keep enterprise knowledge current?", "reply": "It can encode information, but frequent factual updates are usually easier to manage through retrieval. Fine-tuning is not a dependable database of current facts.", "label": "Technical answer", "hint": "Build your answer around: Diagnose → baseline → compare", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-33", "round": 2, "project": "fundamentals", "title": "Explain LoRA mathematically", "q": "What does LoRA actually train, and what does rank control?", "answer": "LoRA freezes a weight matrix W and learns an update expressed as the product of two smaller matrices: delta W equals B times A. Rank controls the size of that update space and the number of trainable parameters. Higher rank gives more capacity but also increases memory and overfitting risk. I would choose it using held-out task performance.", "cue": "Frozen W → B×A → capacity tradeoff", "trap": "Is doubling rank guaranteed to improve quality?", "reply": "No. More parameters cannot fix poor labels or leakage. I would compare ranks with the same data, evaluation protocol, and realistic compute budget.", "label": "Technical answer", "hint": "Build your answer around: Frozen W → B×A → capacity tradeoff", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "Hugging Face · LoRA", "url": "https://huggingface.co/docs/peft/en/conceptual_guides/lora"}}, {"id": "round-2-34", "round": 2, "project": "fundamentals", "title": "What QLoRA saves", "q": "Does four-bit QLoRA mean the entire training process uses four-bit memory?", "answer": "No. QLoRA stores the frozen base weights in a quantized representation and trains adapters. Computation, activations, adapter parameters, gradients, and optimizer state still require memory at other precisions. The saving is substantial for base weights, but sequence length and activation storage can still make a training run run out of memory.", "cue": "Quantized weights → train adapters → activation budget", "trap": "What would you change first if training runs out of memory?", "reply": "I would inspect memory usage, then reduce sequence length or microbatch size, consider gradient checkpointing, and recover the desired effective batch through accumulation where appropriate.", "label": "Technical answer", "hint": "Build your answer around: Quantized weights → train adapters → activation budget", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "Hugging Face · Quantization", "url": "https://huggingface.co/docs/peft/developer_guides/quantization"}}, {"id": "round-2-35", "round": 2, "project": "fundamentals", "title": "Loss versus task success", "q": "Why can training loss fall while document extraction gets worse?", "answer": "Token-level loss averages prediction quality across the target sequence. It may improve on common formatting while rare critical fields get worse. I would track held-out field exact match, missing-field handling, schema validity, and error severity alongside loss. A lower loss is useful evidence, but the checkpoint must meet the actual extraction objective.", "cue": "Token objective → field objective → checkpoint", "trap": "Why mask prompt tokens in completion-only training?", "reply": "The loss then focuses on predicting the response rather than reproducing the prompt. The prompt still provides context to the model.", "label": "Technical answer", "hint": "Build your answer around: Token objective → field objective → checkpoint", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "PyTorch · CrossEntropyLoss", "url": "https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html"}}, {"id": "round-2-36", "round": 2, "project": "fundamentals", "title": "Detect overfitting and leakage", "q": "Your training score rises sharply. What convinces you the model actually improved?", "answer": "I would compare training and validation behavior on data separated by document family, source, or user scenario, then audit near duplicates and shared templates. I would inspect per-class and difficult-case results, not just the average. Final selection should use validation data; a genuinely held-out test should be reserved for the final assessment.", "cue": "Independent split → failure slices → untouched test", "trap": "What if the same template has different IDs in train and test?", "reply": "The rows are different, but the language pattern may be effectively shared. I would normalize identifiers and test on new template families before claiming generalization.", "label": "Technical answer", "hint": "Build your answer around: Independent split → failure slices → untouched test", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-37", "round": 2, "project": "fundamentals", "title": "Tokenization and truncation", "q": "Why does tokenization matter for your tax-document extraction pipeline?", "answer": "Tokenization determines how much source text fits and how fields are represented. Long tables, identifiers, and multilingual text can consume tokens differently. I would inspect token counts, preserve relevant headers and rows, and avoid silently truncating the evidence needed for a field. Chunking should retain enough context to associate amounts with the correct entity.", "cue": "Token budget → field context → no silent truncation", "trap": "Would you just truncate the last half of the document?", "reply": "No. Important fields may appear near the end. I would select relevant sections or process bounded sections and reconcile their evidence.", "label": "Technical answer", "hint": "Build your answer around: Token budget → field context → no silent truncation", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-38", "round": 2, "project": "fundamentals", "title": "Attention and KV cache", "q": "Explain attention and why long contexts make inference expensive.", "answer": "Attention compares queries with keys to weight the value representations a token uses. Standard full attention has quadratic score computation in sequence length during prefill. During autoregressive generation, a KV cache reuses prior keys and values, reducing repeated work while consuming memory. Longer prompts therefore affect prefill latency, generation cost, and concurrent capacity.", "cue": "Queries/keys/values → prefill → cached decoding", "trap": "Does a KV cache make long context free?", "reply": "No. The cache grows with context, layers, and key/value dimensions, and each new token still attends to the retained context. Optimized kernels change efficiency, not that basic tradeoff.", "label": "Technical answer", "hint": "Build your answer around: Queries/keys/values → prefill → cached decoding", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-39", "round": 2, "project": "fundamentals", "title": "Class imbalance and abstention", "q": "How would you evaluate a classifier with many rare action templates?", "answer": "I would inspect per-class precision and recall, macro averages, a confusion matrix, and the cost of each mistake. A dominant class can hide poor rare-action performance in overall accuracy. I would tune an abstention policy on held-out data and report both accepted-action accuracy and coverage, especially for mutating operations.", "cue": "Per-class metrics → risk → coverage", "trap": "Can you get perfect accuracy by rejecting everything?", "reply": "Accepted-case accuracy becomes uninformative if coverage is zero. I would report coverage, wrong accepted actions, and the total task-success rate together.", "label": "Technical answer", "hint": "Build your answer around: Per-class metrics → risk → coverage", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-40", "round": 2, "project": "rag", "title": "Choose chunk boundaries", "q": "How would you choose chunk size for code retrieval?", "answer": "I would start with function or class boundaries and preserve file paths, symbols, and nearby context. Small chunks improve focus but can lose dependencies; large chunks preserve context but dilute retrieval and consume the prompt budget. I would compare alternatives using representative questions, retrieval recall, answer correctness, and latency.", "cue": "Code structure → context tradeoff → evaluate", "trap": "Why not choose one fixed token count for every file?", "reply": "Code structure and task scope vary. A token limit is a useful bound, but blindly cutting across a signature and its body can break the evidence.", "label": "Technical answer", "hint": "Build your answer around: Code structure → context tradeoff → evaluate", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-41", "round": 2, "project": "rag", "title": "Embedding model versus reranker", "q": "What is the difference between an embedding retriever and a cross-encoder reranker?", "answer": "An embedding retriever encodes queries and documents separately, which allows efficient search over precomputed document vectors. A cross-encoder examines a query and candidate together, often improving relevance judgments at greater per-pair cost. I would retrieve a manageable candidate set first and rerank only if the quality improvement justifies the latency.", "cue": "Independent vectors → joint scoring → budget", "trap": "Can a reranker recover a document the retriever never found?", "reply": "No. It can reorder the candidate set. Missing evidence requires improving candidate recall or expanding retrieval.", "label": "Technical answer", "hint": "Build your answer around: Independent vectors → joint scoring → budget", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-42", "round": 2, "project": "rag", "title": "Evaluate RAG properly", "q": "Which metrics would you use to diagnose a RAG application?", "answer": "I would evaluate retrieval recall and ranking quality separately from answer correctness and evidence support. Missing evidence suggests a retrieval issue; unsupported claims suggest a generation issue. I would also track abstentions, latency, and cost. Automated judges need calibration against human-reviewed examples, particularly when a metric will determine a release decision.", "cue": "Retrieval → generation → human calibration", "trap": "Is a high faithfulness score sufficient to ship?", "reply": "No. A response can be faithful to an outdated source or fail to answer the question. Correctness, relevance, source quality, and operational behavior also matter.", "label": "Technical answer", "hint": "Build your answer around: Retrieval → generation → human calibration", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "Ragas · Evaluation metrics", "url": "https://docs.ragas.io/en/latest/concepts/metrics/available_metrics/"}}, {"id": "round-2-43", "round": 2, "project": "rag", "title": "Prompt injection in retrieved code", "q": "A retrieved README tells the assistant to send secrets to an external URL. What prevents it?", "answer": "I would treat retrieved text as untrusted evidence. Tool permissions and data access must be enforced outside the model, with scoped credentials, validated arguments, and explicit controls for consequential actions. Prompts can reinforce the boundary, but they are not the authorization mechanism. I would test malicious content embedded in documents and code comments.", "cue": "Untrusted text → external policy → adversarial tests", "trap": "Would removing the phrase “ignore previous instructions” solve it?", "reply": "No. Attacks can be indirect or obfuscated. The system must remain safe even when the model follows a malicious suggestion.", "label": "Technical answer", "hint": "Build your answer around: Untrusted text → external policy → adversarial tests", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-44", "round": 2, "project": "rag", "title": "Tenant isolation and stale access", "q": "How would you prevent one user’s documents from appearing in another user’s answer?", "answer": "I would derive authorization from the authenticated identity and enforce it during retrieval, source fetching, and tool execution. Cache keys must include the relevant access scope and content version. Revoked permissions should invalidate access even if embeddings remain indexed. I would test cross-tenant queries and attempts to bypass filters through direct document IDs.", "cue": "Identity → enforced scope → cache invalidation", "trap": "Can you trust a tenant ID passed in the user’s prompt?", "reply": "No. The authorization scope must come from trusted server-side identity and policy, not model output or user-supplied text.", "label": "Technical answer", "hint": "Build your answer around: Identity → enforced scope → cache invalidation", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-45", "round": 2, "project": "data", "title": "Spark: lazy execution and shuffle", "q": "What happens between a PySpark transformation and an action?", "answer": "Transformations build a logical computation rather than immediately processing every row. An action triggers execution, and Spark plans the work into stages and tasks. Operations requiring redistribution, such as many joins and aggregations, introduce shuffles. I would inspect the plan and runtime metrics because data movement often dominates the cost.", "cue": "Plan → action → shuffle cost", "trap": "Would caching every intermediate DataFrame help?", "reply": "No. Caching consumes memory and can cause spill or eviction. I would cache reused expensive results only when measurements justify it.", "label": "Technical answer", "hint": "Build your answer around: Plan → action → shuffle cost", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "Apache Spark · Performance tuning", "url": "https://spark.apache.org/docs/latest/sql-performance-tuning"}}, {"id": "round-2-46", "round": 2, "project": "data", "title": "Broadcast versus shuffle join", "q": "When would you use a broadcast join?", "answer": "When one side is small enough to fit comfortably on each executor, broadcasting it can avoid shuffling the large side. I would consider serialized size, executor memory, concurrency, and join semantics rather than row count alone. If both sides are large, I would inspect partitioning, skew, filtering, and the chosen distributed join strategy.", "cue": "Small side → memory budget → inspect plan", "trap": "What if the supposedly small side suddenly grows?", "reply": "A forced broadcast can cause memory pressure or failure. I would keep statistics current, monitor size, and avoid hard-coded hints without an operating bound.", "label": "Technical answer", "hint": "Build your answer around: Small side → memory budget → inspect plan", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "Apache Spark · Performance tuning", "url": "https://spark.apache.org/docs/latest/sql-performance-tuning"}}, {"id": "round-2-47", "round": 2, "project": "data", "title": "Partitioning and small files", "q": "How would you partition a large transactional dataset?", "answer": "I would choose columns that match common filters and have manageable cardinality, then measure pruning and file sizes. Partitioning every unique customer can create too many tiny files. I would balance query access patterns, write volume, and maintenance, with compaction where appropriate. Physical partitioning should be a workload decision.", "cue": "Query filters → manageable cardinality → file sizes", "trap": "Is repartition the same as coalesce?", "reply": "Repartition generally shuffles to redistribute data and can increase or decrease partitions. Coalesce commonly reduces partitions with less movement, but may preserve imbalance.", "label": "Technical answer", "hint": "Build your answer around: Query filters → manageable cardinality → file sizes", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "Apache Spark · Performance tuning", "url": "https://spark.apache.org/docs/latest/sql-performance-tuning"}}, {"id": "round-2-48", "round": 2, "project": "data", "title": "Watermarks and late data", "q": "What does a watermark do in a streaming pipeline?", "answer": "A watermark uses observed event-time progress and an allowed delay to bound state and handle late records for supported stateful operations. It is not a guarantee that every older record will be discarded at one exact instant. I would define the business policy for very late data and provide a correction or reconciliation path.", "cue": "Event time → bounded state → late-data policy", "trap": "Does a watermark advance just because wall-clock time passes?", "reply": "Generally it depends on event-time progress in the input. An idle or slow input can affect advancement, especially with multiple streams.", "label": "Technical answer", "hint": "Build your answer around: Event time → bounded state → late-data policy", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "Apache Spark · Structured Streaming", "url": "https://spark.apache.org/docs/3.5.6/structured-streaming-programming-guide.html"}}, {"id": "round-2-49", "round": 2, "project": "data", "title": "Exactly-once: scope the claim", "q": "Does a Spark checkpoint guarantee exactly-once writes to an external API?", "answer": "No. A checkpoint can support recovery of source progress and processing state, but external side effects depend on the sink’s commit and deduplication behavior. I would use a stable event or batch identity and an idempotent destination operation. The guarantee must cover the source, processing, and sink together.", "cue": "Checkpoint → sink semantics → idempotency", "trap": "What about foreachBatch?", "reply": "It can replay a batch after a failure. I would make the sink operation duplicate-safe using a stable batch identity and a durable commit protocol appropriate to that sink.", "label": "Technical answer", "hint": "Build your answer around: Checkpoint → sink semantics → idempotency", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "Apache Spark · Structured Streaming", "url": "https://spark.apache.org/docs/3.5.6/structured-streaming-programming-guide.html"}}, {"id": "round-2-50", "round": 2, "project": "data", "title": "Incremental loads and schema changes", "q": "How would you design incremental ingestion that tolerates updates and schema drift?", "answer": "I would prefer a reliable change feed or monotonic source position, preserve operation type and source ordering, and make merges replay-safe. A timestamp watermark needs overlap and reconciliation if updates can arrive late. I would validate schema changes against a contract, allow compatible additions, and quarantine incompatible records with enough context to repair them.", "cue": "Change identity → replay-safe merge → schema contract", "trap": "Can you simply select rows newer than the last timestamp?", "reply": "Only if the source guarantees that ordering and completeness. Equal timestamps, late commits, updates and deletes can otherwise be missed.", "label": "Technical answer", "hint": "Build your answer around: Change identity → replay-safe merge → schema contract", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-51", "round": 2, "project": "python", "title": "Async, threads, and processes", "q": "When would you use async def in a FastAPI endpoint?", "answer": "For request paths that await nonblocking I/O, such as an async HTTP or database client. Calling blocking work inside async def can block the event loop. I would isolate CPU-heavy processing or model inference in an appropriate worker or serving system and bound concurrency so requests cannot overwhelm downstream capacity.", "cue": "Await I/O → isolate blocking work → bound load", "trap": "Does making an inference function async make it faster?", "reply": "No. Declaring a function async does not parallelize its computation. Throughput depends on the execution backend, batching, scheduling, and resource limits.", "label": "Technical answer", "hint": "Build your answer around: Await I/O → isolate blocking work → bound load", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60, "source": {"title": "FastAPI · Concurrency", "url": "https://fastapi.tiangolo.com/async/"}}, {"id": "round-2-52", "round": 2, "project": "python", "title": "Secure an extraction API", "q": "What controls belong around your model extraction endpoint?", "answer": "I would authenticate the caller, authorize access to the specific document, enforce size and format limits, and validate the output contract. Long jobs should use a durable job ID with status and idempotency. I would add request limits, deadlines, audit events, and careful log redaction so operational visibility does not expose document contents.", "cue": "Identity → resource authorization → bounded jobs", "trap": "Is a valid login enough to download any result?", "reply": "No. Each job and result needs object-level authorization; knowing a job ID must not grant access.", "label": "Technical answer", "hint": "Build your answer around: Identity → resource authorization → bounded jobs", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-53", "round": 2, "project": "python", "title": "Reliability tests that matter", "q": "What would you test beyond a successful extraction example?", "answer": "I would cover missing fields, ambiguous values, malformed files, duplicate requests, downstream timeouts, permission failures, and reprocessing. For model changes, I would use a frozen regression set with critical-field slices. For file operations, I would test state changes and crashes around side effects. Tests should target failure consequences, not merely mirror the code.", "cue": "Bad input → partial failure → regression", "trap": "Would you mock every external dependency?", "reply": "Unit tests can use mocks, but contract and integration tests must verify real boundaries. Otherwise a mocked success can hide a broken protocol or incompatible response.", "label": "Technical answer", "hint": "Build your answer around: Bad input → partial failure → regression", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-54", "round": 2, "project": "fundamentals", "title": "Deployment drift and rollback", "q": "How do you detect a model that degrades after deployment?", "answer": "I would monitor input changes, review and correction rates, and task-quality samples alongside latency and failures. Unlabeled drift is an alert, not proof of quality loss. I would version the model, prompt, schema, and evaluation set, roll out gradually, and retain a tested rollback path when measured quality or operational limits regress.", "cue": "Observe → label → controlled rollout", "trap": "Why not automatically retrain whenever drift rises?", "reply": "Drift may be harmless or caused by a pipeline bug. I would identify the cause, curate labels, and validate a candidate before changing production behavior.", "label": "Technical answer", "hint": "Build your answer around: Observe → label → controlled rollout", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-2-55", "round": 2, "project": "fundamentals", "title": "Measure the claim, not the headline", "q": "How would you report confidence in an accuracy estimate?", "answer": "I would state the population, metric definition, sample size, and uncertainty. For independent binary outcomes, a binomial interval is a useful starting point. Correlated templates or documents reduce effective independence, so I would consider grouping and stratified results. A narrow interval does not repair a test set that fails to represent real traffic.", "cue": "Define population → quantify uncertainty → check representativeness", "trap": "Does 1,080 synthetic cases make the benchmark representative?", "reply": "No. Sample size and representativeness are different. Repeated templates can produce precise estimates for a narrow distribution without supporting broad generalization.", "label": "Technical answer", "hint": "Build your answer around: Define population → quantify uncertainty → check representativeness", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 60}, {"id": "round-3-56", "round": 3, "project": "coding", "title": "SQL: latest successful state", "q": "Table events(customer_id, event_id, event_time, ingested_at, status). Return customers whose latest event is successful. Assume non-null timestamps and a unique event_id; use event time, then ingestion time, then ID to break ties.", "answer": "I would rank every customer’s events before filtering on status. Otherwise I could return an old success even when the latest event failed. ROW_NUMBER gives one deterministic winner using the stated ordering. The final filter answers whether that winner is successful.", "cue": "Rank all → deterministic winner → filter status", "trap": "What if “latest” means the latest arrival instead?", "reply": "I would make ingested_at the primary ordering key. The business definition of latest determines the query.", "label": "Worked example", "hint": "Build your answer around: Rank all → deterministic winner → filter status", "evidence": "SQL reference tested with SQLite: newer failure suppresses older success, ties resolve by ingestion then ID. Null timestamp policy must be specified if the schema permits nulls.", "rubric": ["Ranked before filtering status", "Used deterministic tie-breakers", "Explained event time versus arrival time"], "seconds": 300, "code": "WITH ranked AS (\n  SELECT *, ROW_NUMBER() OVER (\n    PARTITION BY customer_id\n    ORDER BY event_time DESC, ingested_at DESC, event_id DESC\n  ) AS rn\n  FROM events\n)\nSELECT customer_id, event_id, event_time, status\nFROM ranked\nWHERE rn = 1 AND status = 'success';"}, {"id": "round-3-57", "round": 3, "project": "coding", "title": "SQL: a rolling seven-day total", "q": "Table daily_revenue(day DATE PRIMARY KEY, revenue NUMERIC) contains exactly one row per calendar day, including zero-revenue days. Compute the total for each day and the preceding six days.", "answer": "Because the input has one row for every calendar day, a seven-row window represents seven days. I would order by day and use six preceding rows plus the current row. If dates are missing, I would first join to a date spine or use a suitable date-range window for the database dialect.", "cue": "Dense calendar → ordered window → missing-day policy", "trap": "What happens at the beginning of the table?", "reply": "The total uses the available rows. If the requirement demands seven complete days, I would expose a window count and filter or label incomplete windows.", "label": "Worked example", "hint": "Build your answer around: Dense calendar → ordered window → missing-day policy", "evidence": "Reference tested on eight daily rows, including a zero-revenue day. ROWS is a row-count frame, not an elapsed-time frame.", "rubric": ["Stated the complete-calendar assumption", "Used the correct inclusive window", "Handled missing or incomplete days"], "seconds": 300, "code": "SELECT day,\n       SUM(revenue) OVER (\n         ORDER BY day\n         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW\n       ) AS revenue_7d,\n       COUNT(*) OVER (\n         ORDER BY day\n         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW\n       ) AS days_in_window\nFROM daily_revenue\nORDER BY day;"}, {"id": "round-3-58", "round": 3, "project": "coding", "title": "SQL: stop a join from inflating money", "q": "Tables orders(order_id PRIMARY KEY, customer_id, amount) and order_items(item_id PRIMARY KEY, order_id). Return total order amount per customer for orders having at least one item.", "answer": "I would use EXISTS because I only need to know whether an item exists. A direct join creates one row per item and can multiply the order amount. The aggregation should preserve one row per qualifying order before summing by customer.", "cue": "Preserve grain → EXISTS → sum once", "trap": "Could SUM(DISTINCT amount) repair the join?", "reply": "No. Two different orders can have the same amount. Distinct amounts would incorrectly collapse legitimate orders.", "label": "Worked example", "hint": "Build your answer around: Preserve grain → EXISTS → sum once", "evidence": "Reference tested with multiple items per order, equal amounts on separate orders, and an order without items.", "rubric": ["Identified the one-order grain", "Avoided item-driven duplication", "Rejected SUM(DISTINCT amount) as a general fix"], "seconds": 300, "code": "SELECT o.customer_id, SUM(o.amount) AS total_amount\nFROM orders AS o\nWHERE EXISTS (\n  SELECT 1 FROM order_items AS i\n  WHERE i.order_id = o.order_id\n)\nGROUP BY o.customer_id;"}, {"id": "round-3-59", "round": 3, "project": "coding", "title": "Python: stream the latest event", "q": "Given an iterable of dictionaries with customer_id, event_id, event_time and ingested_at, keep one latest event per customer. Timestamps are comparable timezone-normalized values; IDs are comparable unique integers. Return results ordered by customer ID.", "answer": "I would maintain one best event per customer and compare a tuple of event time, ingestion time, and event ID. This handles out-of-order input without sorting all events. Processing takes O(n), plus O(k log k) to order the k customers, and O(k) storage. I would validate timestamp and key types at the input boundary.", "cue": "One winner per key → tuple comparison → O(k) memory", "trap": "What if there are too many customers for memory?", "reply": "I would partition the data and use an external aggregation or database, rather than treating an in-memory dictionary as an unlimited solution.", "label": "Worked example", "hint": "Build your answer around: One winner per key → tuple comparison → O(k) memory", "evidence": "Reference tested with empty input, ties, out-of-order events, and multiple customers. Assumes all customer IDs can be sorted consistently.", "rubric": ["Handled out-of-order input and ties", "Gave correct time and space complexity", "Defined assumptions and an external-memory alternative"], "seconds": 300, "code": "def latest_by_customer(events):\n    best = {}\n    def order(event):\n        return (event[\"event_time\"], event[\"ingested_at\"],\n                event[\"event_id\"])\n    for event in events:\n        key = event[\"customer_id\"]\n        if key not in best or order(event) > order(best[key]):\n            best[key] = dict(event)\n    return [best[key] for key in sorted(best)]"}, {"id": "round-3-60", "round": 3, "project": "coding", "title": "Python: merge overlapping intervals", "q": "Given integer intervals [start, end], merge overlaps and touching endpoints. Reject intervals where start > end. Return sorted merged intervals.", "answer": "I would sort by start time, then maintain the last merged interval. If the next start is at or before the last end, I extend that interval; otherwise I append a new one. Sorting costs O(n log n), followed by a linear scan. I would clarify whether touching intervals count as overlapping before coding.", "cue": "Sort → compare last end → extend or append", "trap": "How would half-open interval semantics change it?", "reply": "If adjacent half-open intervals should remain separate, I would use a strict overlap comparison. The merge rule must match the domain’s boundary convention.", "label": "Worked example", "hint": "Build your answer around: Sort → compare last end → extend or append", "evidence": "Reference tested for empty input, nested intervals, touching endpoints, unsorted input and invalid bounds. Stores a sorted copy and does not mutate input pairs.", "rubric": ["Clarified endpoint semantics", "Handled nesting, empty input and invalid intervals", "Explained O(n log n) sorting cost"], "seconds": 300, "code": "def merge_intervals(intervals):\n    ordered = sorted((start, end) for start, end in intervals)\n    if any(start > end for start, end in ordered):\n        raise ValueError(\"start must be <= end\")\n    merged = []\n    for start, end in ordered:\n        if merged and start <= merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged"}, {"id": "round-3-61", "round": 3, "project": "coding", "title": "Python: limit concurrent retrieval", "q": "Implement async retrieval for a finite list of document IDs using fetch(doc_id). Preserve input order, limit concurrent calls, and apply a per-call timeout. Assume fetch supports cooperative cancellation.", "answer": "I would use a semaphore to limit active fetches and apply the timeout only after acquiring a slot. I would return a per-document outcome so one failure does not discard successful results. This bounds active I/O, but scheduling every input still consumes memory; for very large inputs, I would use a bounded worker queue.", "cue": "Semaphore → timeout after slot → per-item outcome", "trap": "Does this guarantee a timed-out server request stopped?", "reply": "No. Cooperative cancellation stops the client wait only as supported by the coroutine. The remote operation may continue, so side effects still require idempotency.", "label": "Worked example", "hint": "Build your answer around: Semaphore → timeout after slot → per-item outcome", "evidence": "Python 3.11+ reference. Tested for ordering, maximum active calls, timeout, individual error, empty input and invalid limit. Overall cancellation is not swallowed; do not expose raw exception text to clients.", "rubric": ["Bounded active calls and preserved order", "Handled timeout and individual failure", "Explained task-memory and remote-cancellation limits"], "seconds": 300, "code": "import asyncio\n\nasync def retrieve_many(ids, fetch, limit=4, timeout=5.0):\n    if limit < 1 or timeout <= 0:\n        raise ValueError(\"limit and timeout must be positive\")\n    slots = asyncio.Semaphore(limit)\n    async def one(doc_id):\n        async with slots:\n            try:\n                value = await asyncio.wait_for(fetch(doc_id), timeout)\n                return {\"id\": doc_id, \"value\": value, \"error\": None}\n            except TimeoutError:\n                return {\"id\": doc_id, \"value\": None, \"error\": \"timeout\"}\n            except Exception as exc:\n                return {\"id\": doc_id, \"value\": None,\n                        \"error\": type(exc).__name__}\n    return await asyncio.gather(*(one(doc_id) for doc_id in ids))", "source": {"title": "FastAPI · Concurrency", "url": "https://fastapi.tiangolo.com/async/"}}, {"id": "round-3-62", "round": 3, "project": "systems", "title": "Design: enterprise extraction", "q": "Design an extraction platform for 100,000 tax documents per day, with bursty arrivals, human review, auditability, and safe replay.", "answer": "I would clarify document sizes, peak arrival rate, latency targets, and critical-field error tolerance. Then I would separate durable ingestion, parsing, model extraction, validation, review, and idempotent delivery. Each result would retain source evidence and processing versions. I would monitor queue age, review rate, field errors, and cost, and size workers against peak demand and measured service time.", "cue": "Requirements → staged processing → recoverable delivery", "trap": "Give me a capacity estimate instead of listing components.", "reply": "100,000 per day averages about 1.16 documents per second. As a hypothetical example, a 10× peak and two seconds per document require about 24 concurrent processing slots at full utilization, before headroom. I would validate this against model batching and downstream limits.", "label": "Worked example", "hint": "Build your answer around: Requirements → staged processing → recoverable delivery", "evidence": "System-design scenario, not actual Bank of America scale. Example assumptions are explicitly hypothetical. Preserve approved human corrections across replay; model/prompt/schema versions belong in provenance.", "rubric": ["Clarified traffic, latency and critical fields", "Included review, versioning and idempotency", "Estimated capacity with explicit assumptions"], "seconds": 180}, {"id": "round-3-63", "round": 3, "project": "systems", "title": "Design: a multi-repository assistant", "q": "Design a codebase assistant for many repositories with frequent commits and different access permissions.", "answer": "I would index code with repository, revision, path, and symbol metadata, then enforce access scope before retrieval. Incremental indexing would update changed files and remove deleted content. A bounded workflow would retrieve evidence, resolve gaps, and answer with source references. I would evaluate answer quality by task type and monitor freshness, cost, and latency.", "cue": "Revision-aware index → access scope → bounded search", "trap": "What if an answer combines chunks from incompatible commits?", "reply": "I would query a consistent repository revision or clearly identify mixed-version evidence. Version metadata should control retrieval, not merely decorate citations.", "label": "Worked example", "hint": "Build your answer around: Revision-aware index → access scope → bounded search", "evidence": "Proposed architecture for a RAG design interview. Exact RAG project implementation remains unverified.", "rubric": ["Enforced per-repository authorization", "Handled updates, deletions and revision consistency", "Defined stopping conditions and evaluation"], "seconds": 180}, {"id": "round-3-64", "round": 3, "project": "systems", "title": "Design: transactional lakehouse ingestion", "q": "Design ingestion for 5 TB per day with updates, deletes, duplicate deliveries, and downstream analytics.", "answer": "I would clarify source guarantees and freshness needs, land immutable raw changes with source positions, then validate and merge into curated tables using stable keys and ordering. Reprocessing must be deterministic, and deletes must propagate. I would partition for actual query patterns, manage file sizes, and monitor lag, quality, and reconciliation against the source.", "cue": "Raw changes → ordered merge → reconcile", "trap": "What if an older update arrives after a newer one?", "reply": "I would compare source versions or change positions and prevent an older event from replacing newer state. Ingestion time alone is not sufficient.", "label": "Worked example", "hint": "Build your answer around: Raw changes → ordered merge → reconcile", "evidence": "Hypothetical design related to the scale on your résumé. The résumé does not establish a particular lakehouse format, CDC vendor, or streaming topology.", "rubric": ["Included source ordering and delete semantics", "Made replay and merging duplicate-safe", "Addressed file layout, lag and reconciliation"], "seconds": 180}, {"id": "round-3-65", "round": 3, "project": "systems", "title": "Design: serve a fine-tuned model", "q": "How would you serve a fine-tuned extraction model under a strict latency and cost budget?", "answer": "I would profile preprocessing, prefill, decoding, and validation separately. I would benchmark model size and quantization on the actual extraction set, then tune batching and concurrency within memory limits. Requests need bounded queues and deadlines. I would track tail latency and cost per accepted document, including retries and human review, and roll out model changes gradually.", "cue": "Profile → benchmark → bounded serving", "trap": "Why not maximize batch size?", "reply": "Larger batches may improve throughput while increasing queueing and tail latency. I would optimize against the service-level objective and realistic arrival patterns.", "label": "Worked example", "hint": "Build your answer around: Profile → benchmark → bounded serving", "evidence": "Recommended design. No specific GPU, throughput or cost result is claimed for your past work.", "rubric": ["Separated latency components", "Balanced throughput, memory and tail latency", "Included rollout, overload and true cost"], "seconds": 180}, {"id": "round-3-66", "round": 3, "project": "systems", "title": "Design: safe desktop actions", "q": "Design an assistant that can move and rename files safely while users and other apps may change them.", "answer": "I would separate proposals from execution, bind approved arguments to observed state, and revalidate immediately before acting. Operations need stable identities, durable intent records, and verified outcomes. Recovery should inspect actual files rather than blindly replaying. Undo must detect changed content and destination collisions, with ambiguity routed to review.", "cue": "Bind permission → revalidate → reconcile", "trap": "Can you eliminate every race by hashing the source?", "reply": "No. A file can change after a hash check. I would use suitable operating-system primitives and narrow the race window, while documenting the remaining guarantees instead of promising global atomicity.", "label": "Worked example", "hint": "Build your answer around: Bind permission → revalidate → reconcile", "evidence": "A design exercise inspired by MFlash. Its supplied report confirms several controls but does not establish comprehensive external-process race protection.", "rubric": ["Separated permission from model confidence", "Handled crash windows and concurrent changes", "Protected newer state during undo"], "seconds": 180}, {"id": "round-3-67", "round": 3, "project": "systems", "title": "Incident: latency and review rates spike", "q": "A model update improves an offline score, but production latency and human review rates double. What do you do?", "answer": "I would stop the rollout or revert to the known-good version while checking error severity and affected traffic. Then I would compare old and new versions on the same production-like samples, including parsing, prompt length, retries, and output behavior. I would treat the offline metric as incomplete and update the release gate to cover the regressions that mattered.", "cue": "Contain → isolate → strengthen release gate", "trap": "What if the model itself is fine and the new parser caused it?", "reply": "I would compare complete versioned pipelines and trace stage-level changes. A model rollback alone is not enough if the regression is in preprocessing.", "label": "Worked example", "hint": "Build your answer around: Contain → isolate → strengthen release gate", "evidence": "Hypothetical incident response. Do not present it as an outage you personally handled.", "rubric": ["Contained impact before extended diagnosis", "Compared versions and stage-level evidence", "Defined a regression test and rollout condition"], "seconds": 180}, {"id": "round-4-68", "round": 4, "project": "behavior", "title": "Pressure: defend your ownership", "q": "You say you owned the workflow end to end. Be specific: what did you personally deliver?", "answer": "At Bank of America, my scope included preparing extraction data, fine-tuning Qwen 3, integrating OCR and APIs, building validation, and delivering the review UI. I also worked directly with clients on the required fields and workflow. I would walk through one input document and show how those components produce a reviewed downstream result.", "cue": "Scope → components → one concrete trace", "trap": "What did the model vendor contribute?", "reply": "Qwen supplied the pretrained foundation model. My work was adapting and integrating it for the extraction workflow; I would not describe that as pretraining the foundation model.", "label": "Confirmed scope · pressure practice", "hint": "Build your answer around: Scope → components → one concrete trace", "evidence": "Based on your supplied ownership details and résumé. Exact infrastructure, training recipe and numerical results should be verified before adding them.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 90}, {"id": "round-4-69", "round": 4, "project": "behavior", "title": "Pressure: your benchmark has overlap", "q": "Your NoteEchoes templates overlap across train and test. Why should I trust your engineering judgment?", "answer": "That finding limits the generalization claim, and I would state it directly. The saved result still measures regression behavior on those synthetic cases, but it does not establish unfamiliar-request accuracy. The appropriate next step is an independently authored holdout and a matched base-model comparison. I would use those results to decide whether the model is ready for broader use.", "cue": "Acknowledge → scope evidence → improve test", "trap": "Did you know about the overlap when you wrote the résumé?", "reply": "The report surfaced the normalized-template finding. I would clarify when I learned it and describe the result with its scope rather than imply broader accuracy.", "label": "Report-backed reflection", "hint": "Build your answer around: Acknowledge → scope evidence → improve test", "evidence": "Do not invent a historical discovery timeline. If asked when you first knew, answer from your actual recollection.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 90}, {"id": "round-4-70", "round": 4, "project": "behavior", "title": "Pressure: a real failure story", "q": "Tell me about a failure you personally handled. What changed because of your actions?", "answer": "I would use one real event and state the impact first. Then I would explain the evidence that isolated the cause, my specific corrective action, and how I verified recovery. I would close with the prevention step and its actual result. A credible answer distinguishes what I observed from what I inferred and avoids claiming a fix that was never deployed.", "cue": "Impact → your action → verified result", "trap": "Which failure from your projects can you honestly discuss?", "reply": "The NoteEchoes failed-ingestion retry finding is a concrete code-review issue, but it is not a confirmed incident you experienced or fixed. Use it as a design reflection unless you can supply the actual history.", "label": "Personal story needed · answer structure", "hint": "Build your answer around: Impact → your action → verified result", "evidence": "No historical incident was supplied. Replace this structure with your own event before using it as a past-tense interview answer. A generic invented STAR story would undermine follow-up answers.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 90}, {"id": "round-4-71", "round": 4, "project": "behavior", "title": "Pressure: disagree with a stakeholder", "q": "A client wants every extracted amount automatically approved. How would you respond?", "answer": "I would align on the business objective, then make the error consequences explicit. I would propose automation for cases that meet evidence-based acceptance criteria and review for ambiguous or high-impact cases. We could measure handling time, critical-field errors, and review volume in a pilot, then expand automation as the evidence supports it.", "cue": "Align → quantify risk → measurable pilot", "trap": "They say review defeats the purpose of automation.", "reply": "I would show total workflow effort and error cost, then target the review policy to the cases where it adds value. The goal is reliable throughput, not simply eliminating every review step.", "label": "Professional scenario answer", "hint": "Build your answer around: Align → quantify risk → measurable pilot", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 90}, {"id": "round-4-72", "round": 4, "project": "behavior", "title": "Pressure: ship by Friday", "q": "You have two days to deliver extraction for ten document types. How do you prioritize?", "answer": "I would identify the highest-value document types and critical fields, agree on acceptance examples, and ship a narrow, observable workflow with a review fallback. I would make exclusions and failure behavior explicit and reserve time for integration and representative testing. A limited workflow with clear guarantees is easier to expand than a broad workflow whose failures are hidden.", "cue": "Critical scope → acceptance examples → safe rollout", "trap": "Would you skip evaluation to meet the date?", "reply": "I would reduce scope before removing the minimum checks needed to understand quality. A deadline changes the deliverable, not the need to know whether it works.", "label": "Professional scenario answer", "hint": "Build your answer around: Critical scope → acceptance examples → safe rollout", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 90}, {"id": "round-4-73", "round": 4, "project": "behavior", "title": "Pressure: explain AI to a director", "q": "Explain why the extraction system still needs human review, without technical jargon.", "answer": "The system can do repetitive reading and field entry quickly, but unusual documents can still produce a plausible wrong value. Review focuses people on the cases where that mistake would matter. I would measure whether the combined process saves time while keeping the output dependable, and expand automatic handling as results justify it.", "cue": "Repetitive work → consequential exceptions → measured value", "trap": "Give me the single business metric you would lead with.", "reply": "Human handling time per accepted document, including corrections, paired with critical-field error rate. Speed without a quality measure can hide a worse outcome.", "label": "Professional scenario answer", "hint": "Build your answer around: Repetitive work → consequential exceptions → measured value", "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 90}, {"id": "round-4-74", "round": 4, "project": "behavior", "title": "Pressure: when you do not know", "q": "I ask for the exact Qwen training settings and you cannot remember. How do you answer professionally?", "answer": "I do not recall the exact configuration, and I would verify the run artifacts before quoting it. I can explain the task, data preparation, evaluation approach, and integration I worked on. If you want to explore design choices, I can also explain how I would select an adapter setup and validate it today.", "cue": "State limit → explain known work → reason forward", "trap": "Does not remembering mean you did not do the work?", "reply": "Exact settings should be recoverable from artifacts. I would support ownership with the pipeline decisions and implementation details I do remember, while acknowledging the specific information I need to check.", "label": "Professional interview response", "hint": "Build your answer around: State limit → explain known work → reason forward", "evidence": "Do not substitute recommended hyperparameters for a historical configuration. Concise acknowledgment is stronger than an invented number.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 90}, {"id": "round-4-75", "round": 4, "project": "behavior", "title": "Pressure: justify hiring you", "q": "Why should we hire you for an AI engineering role?", "answer": "I bring experience across the full path from data to a usable AI workflow. My background includes Spark pipelines, production document extraction, API and UI integration, and projects in local inference and controlled automation. I can discuss model quality and the surrounding system—how inputs are prepared, results are checked, and failures are handled. That is the combination I would bring to this role.", "cue": "Data foundation → AI delivery → operational judgment", "trap": "What do you still need to strengthen?", "reply": "I would strengthen independent model evaluation and deepen production measurements for my personal projects. I can identify the evidence gaps and describe a concrete plan to close them.", "label": "Résumé-backed positioning", "hint": "Build your answer around: Data foundation → AI delivery → operational judgment", "evidence": "Keep the opening aligned with the actual job. Avoid invented team leadership, revenue impact, or adoption metrics.", "rubric": ["Answered the actual question directly", "Explained the mechanism or tradeoff", "Handled the follow-up with a concrete check"], "seconds": 90}];
+const cards=[
+  {
+    "project": "bofa",
+    "title": "Explain your Bank of America work",
+    "q": "Walk me through the tax-document extraction system you built.",
+    "label": "Confirmed story",
+    "answer": "I built a Qwen 3 extraction workflow for tax-department documents at Bank of America. It handled digital PDFs and spreadsheets and extracted workflow IDs, dates, vendors, and amounts into validated JSON. I owned the work end to end: data preparation, fine-tuning, OCR integration, evaluation, APIs, and the review UI. My focus was getting usable data into downstream workflows, with review where needed.",
+    "hint": "Lead with the business problem, then inputs → model → validation → delivery, and end with your ownership.",
+    "trap": "Why use OCR if the inputs were digital PDFs?",
+    "rubric": [
+      "Names the input and four fields",
+      "Explains end-to-end ownership",
+      "Separates remembered facts from unknown details"
+    ],
+    "cue": "Problem → four fields → end-to-end ownership",
+    "reply": "Digital PDFs may contain embedded images or unreliable text. I would extract native text first and use OCR only where needed.",
+    "evidence": "User-confirmed scope plus résumé. Model size, training settings, hosting, exact savings methodology and historical incidents remain unverified.",
+    "seconds": 45,
+    "id": "legacy-0",
+    "round": 1
+  },
+  {
+    "project": "bofa",
+    "title": "Why an LLM at all?",
+    "q": "Why use Qwen 3 instead of rules or a spreadsheet parser?",
+    "label": "Recommended approach",
+    "answer": "I would parse spreadsheets directly and extract native text from digital PDFs first. Qwen earns its place when layouts and field names vary enough that semantic interpretation helps. I would compare it with rules on the same held-out documents and judge field accuracy, review effort, latency, and cost. The model should handle ambiguity; ordinary parsing should stay deterministic.",
+    "hint": "Separate document parsing from semantic field mapping.",
+    "trap": "If the spreadsheet already has a vendor column, why send it to an LLM?",
+    "rubric": [
+      "Starts with direct parsing",
+      "Explains when a model adds value",
+      "Defines a measurable baseline"
+    ],
+    "cue": "Parse first → model ambiguity → measure value",
+    "reply": "If a vendor column is reliable, I would read it directly. Sending it through a model adds cost and another opportunity for error.",
+    "evidence": "Recommended design, not confirmed historical architecture. Use “I would” when discussing unverified details.",
+    "seconds": 45,
+    "id": "legacy-1",
+    "round": 1
+  },
+  {
+    "project": "bofa",
+    "title": "Design the fine-tuning run",
+    "q": "You do not remember your training configuration. What would you choose today?",
+    "label": "Recommended approach",
+    "answer": "I do not recall the exact training configuration. For this use case, I would benchmark a prompted Qwen baseline first, then try QLoRA if recurring extraction errors justify adaptation. I would train on document-to-JSON examples, include missing and ambiguous fields, and split by document family. The winning setup is the smallest one that meets field-accuracy, latency, and review requirements.",
+    "hint": "Explain the choice, its constraints, and how you would validate it.",
+    "trap": "Why not start with full fine-tuning?",
+    "rubric": [
+      "Clearly frames a proposed design",
+      "Explains frozen base and adapters",
+      "Addresses leakage and baseline comparison"
+    ],
+    "cue": "Baseline → targeted adaptation → held-out fields",
+    "reply": "Full fine-tuning is more expensive. I would start with adapters and only increase training complexity if controlled evaluation shows a clear benefit.",
+    "evidence": "Qwen3 4B and 8B are possible experimental candidates, not remembered model sizes. No universal best size or invented training count.",
+    "seconds": 45,
+    "id": "legacy-2",
+    "round": 1
+  },
+  {
+    "project": "bofa",
+    "title": "Valid JSON. Wrong money.",
+    "q": "The output is valid JSON, but the amount belongs to the wrong vendor. What now?",
+    "label": "Recommended approach",
+    "answer": "Valid JSON only proves structure. I would trace each amount back to its source, check its vendor and currency, and distinguish totals from subtotals and tax. Conflicting evidence goes to review. Then I would locate the error in parsing, extraction, or mapping and add that case to the regression set.",
+    "hint": "Think about relationships, source evidence, and exception routing.",
+    "trap": "The model says it is 99% confident. Can it auto-approve?",
+    "rubric": [
+      "Separates schema from correctness",
+      "Uses source evidence and field relationships",
+      "Does not trust uncalibrated self-confidence"
+    ],
+    "cue": "Structure ≠ correctness → evidence → regression",
+    "reply": "No. A model’s self-reported confidence is not a calibrated probability. Any automatic approval threshold needs validation against labeled outcomes.",
+    "evidence": "Recommended design. This is a hypothetical failure scenario, not an incident you said occurred.",
+    "seconds": 45,
+    "id": "legacy-3",
+    "round": 1
+  },
+  {
+    "project": "bofa",
+    "title": "The metric cross-examination",
+    "q": "How would you defend the estimated 50–60% manual-effort reduction?",
+    "label": "Recommended approach",
+    "answer": "The 50–60% figure on my résumé is an estimate, not a controlled benchmark. To substantiate it, I would compare total human handling time before and after, including review, corrections, and exceptions, across comparable documents. Faster extraction only matters if the complete workflow takes less effort without sacrificing quality.",
+    "hint": "Include human review and errors in the denominator.",
+    "trap": "Did time saved in extraction just move to reviewers?",
+    "rubric": [
+      "Labels the historical number as estimated",
+      "Includes total human handling time",
+      "Controls document mix and checks quality"
+    ],
+    "cue": "Estimate → total handling time → quality",
+    "reply": "Then the measurement is incomplete. I would include reviewer time and compare the full workflow, not just extraction.",
+    "evidence": "Do not invent sample size, baseline minutes, or a measured causal result. Verify the original basis before quoting the number as proven.",
+    "seconds": 45,
+    "id": "legacy-4",
+    "round": 1
+  },
+  {
+    "project": "bofa",
+    "title": "The duplicate-delivery incident",
+    "q": "The API accepted your result, but your job timed out. Is retrying safe?",
+    "label": "Recommended approach",
+    "answer": "A timeout does not mean the write failed. I would give each delivery a stable idempotency key, enforce it atomically at the destination, and persist delivery status. On an ambiguous timeout, I would reconcile before retrying. That prevents a successful delivery from becoming a duplicate.",
+    "hint": "A timeout does not prove the write failed.",
+    "trap": "Two workers both check for the same key. What stops the race?",
+    "rubric": [
+      "Defines a stable operation identity",
+      "Requires atomic destination enforcement",
+      "Handles ambiguous completion"
+    ],
+    "cue": "Timeout ≠ failure → stable key → atomic write",
+    "reply": "A database uniqueness constraint or atomic conditional write. A separate existence check followed by an insert is vulnerable to races.",
+    "evidence": "Recommended approach; not a claim that a specific destination or API supported this in your implementation.",
+    "seconds": 45,
+    "id": "legacy-5",
+    "round": 1
+  },
+  {
+    "project": "bofa",
+    "title": "MCP is not a quality metric",
+    "q": "You used MCP retrieval. How does that make answers accurate?",
+    "label": "Recommended approach",
+    "answer": "MCP provides a way to expose retrieval; it does not guarantee answer quality. I would check that retrieval returns authorized, current evidence and that the answer actually follows it. If evidence is missing or conflicting, the system should clarify or abstain. I would evaluate retrieval and generation separately.",
+    "hint": "Separate access, retrieval relevance, and answer grounding.",
+    "trap": "Can a grounded answer still be wrong?",
+    "rubric": [
+      "Distinguishes transport from quality",
+      "Checks freshness and permissions",
+      "Explains grounded but outdated evidence"
+    ],
+    "cue": "Access → evidence → supported answer",
+    "reply": "Yes. An answer can faithfully repeat an outdated source. Grounding establishes support, not necessarily truth.",
+    "evidence": "Your résumé establishes MCP-based retrieval. Exact indexing, access controls and evaluation implementation are not yet supplied.",
+    "seconds": 45,
+    "id": "legacy-6",
+    "round": 1
+  },
+  {
+    "project": "bofa",
+    "title": "The architecture whiteboard",
+    "q": "Design the tax-document pipeline for bursts, review, and safe reprocessing.",
+    "label": "Recommended approach",
+    "answer": "I would separate ingestion, parsing, extraction, validation, review, and delivery. A durable queue absorbs bursts; versioned inputs and outputs support replay; idempotent delivery prevents duplicates. I would monitor queue age, field errors, review rate, latency, and cost. Before sizing workers, I would ask about peak traffic, document sizes, and the latency target.",
+    "hint": "Include recovery and human review, not just components.",
+    "trap": "How do you reprocess a document without overwriting an approved correction?",
+    "rubric": [
+      "Asks for scale and latency",
+      "Includes versioning and human corrections",
+      "Explains capacity and failure recovery"
+    ],
+    "cue": "Queue → validate → version → replay",
+    "reply": "I would preserve the approved correction as a separate authoritative version, then stage reprocessed output for comparison rather than silently overwriting it.",
+    "evidence": "Recommended architecture. Do not describe queue technology, deployment topology or throughput as historical facts.",
+    "seconds": 45,
+    "id": "legacy-7",
+    "round": 1
+  },
+  {
+    "project": "notes",
+    "title": "The synthetic benchmark trap",
+    "q": "What does 96.3% action-field exact match on 1,080 synthetic cases actually prove?",
+    "label": "Report-backed · synthetic result",
+    "answer": "The 96.3% result is 1,040 of 1,080 synthetic action cases matching seven selected fields, with the operational checks also passing. It is not full-response or real-user accuracy. The report also found normalized template overlap with training, so I treat it as a regression benchmark. My next step would be an independently written holdout and a matched base-model comparison.",
+    "hint": "Do not turn a synthetic test score into a real-user success claim.",
+    "trap": "Would you accept that error rate for destructive actions?",
+    "rubric": [
+      "Defines metric scope",
+      "Challenges leakage and representativeness",
+      "Considers failure severity"
+    ],
+    "cue": "1,040/1,080 → selected fields → template limitation",
+    "reply": "No. For destructive actions, accuracy alone is insufficient; execution also needs authorization, state checks, and a safe failure path.",
+    "evidence": "Supplied NoteEchoes report: saved outputs were rescored, inference was not rerun. Selected fields: intent, mode, items, entities, draft, requires_confirmation, proposed_tool. No established improvement over stock Qwen.",
+    "seconds": 45,
+    "id": "legacy-8",
+    "round": 1
+  },
+  {
+    "project": "rag",
+    "title": "The retrieval autopsy",
+    "q": "Your codebase assistant cites code but gives the wrong answer. How do you debug it?",
+    "label": "Recommended RAG design",
+    "answer": "I would debug retrieval before changing the prompt. First, check whether the correct repository version and relevant code reached the model. Then inspect chunk boundaries, ranking, missing dependencies, and whether the answer follows the evidence. I would evaluate retrieval and generation separately and turn the failure into a regression case.",
+    "hint": "Find the first stage where the right evidence is lost.",
+    "trap": "What stops self-correcting search from looping forever?",
+    "rubric": [
+      "Separates retrieval and generation",
+      "Checks stale indexes and code context",
+      "Requires bounded retries and evaluation"
+    ],
+    "cue": "Find evidence → inspect ranking → verify answer",
+    "reply": "A fixed search-step budget, a time budget, and a stop condition when evidence no longer improves. Without enough evidence, return a qualified answer or ask for clarification.",
+    "evidence": "Proposed RAG design. Your résumé establishes LangGraph, Claude, Pinecone, asynchronous retrieval and Ragas; exact graph, metrics and operational behavior remain unverified.",
+    "seconds": 45,
+    "id": "legacy-9",
+    "round": 1
+  },
+  {
+    "project": "mflash",
+    "title": "Crash between two worlds",
+    "q": "A file moved, but the database journal still says pending. Recover safely.",
+    "label": "Report-backed implementation",
+    "answer": "The file system and SQLite are not one atomic transaction. In MFlash’s safer move path, a prepared journal record comes first, then the file operation and verification, then commitment. Recovery checks actual file contents before restoring or finalizing. If the original path is occupied, undo uses a collision-safe alternative instead of overwriting newer data.",
+    "hint": "Model the crash window explicitly.",
+    "trap": "Why is SQLite WAL not sufficient by itself?",
+    "rubric": [
+      "Recognizes cross-system atomicity gap",
+      "Reconciles instead of blind retry",
+      "Protects newer state during undo"
+    ],
+    "cue": "Prepared record → verify bytes → safe undo",
+    "reply": "WAL protects database consistency. It does not make an external file operation part of the same transaction, so crash windows still need reconciliation.",
+    "evidence": "Based on supplied MFlash code-review report. The safer move path uses a destination hard link, verification, source unlink and database update. This is recoverable evidence, not a global exactly-once guarantee.",
+    "seconds": 45,
+    "id": "legacy-10",
+    "round": 1
+  },
+  {
+    "project": "data",
+    "title": "The skewed Spark job",
+    "q": "A 5 TB/day pipeline slows down. One key owns 40% of the records. What do you do?",
+    "label": "Recommended approach",
+    "answer": "I would inspect the execution plan, task durations, shuffle, spill, and partition sizes first. A key containing 40% of records can overload one partition even after adding workers. Depending on the operation, I would consider pre-aggregation, a separate hot-key path, or carefully designed salting, then verify correctness and compare runtime and cost.",
+    "hint": "Do not prescribe resources before locating the bottleneck.",
+    "trap": "How can salting accidentally duplicate results?",
+    "rubric": [
+      "Diagnoses from metrics",
+      "Explains hot-key behavior",
+      "Checks correctness and cost"
+    ],
+    "cue": "Measure → locate skew → validate fix",
+    "reply": "If the join sides are replicated or salted inconsistently, matching rows can be multiplied or lost. I would verify key-level cardinality and aggregates.",
+    "evidence": "Recommended diagnosis for a hypothetical incident; do not imply this was a specific Sedin production failure.",
+    "seconds": 45,
+    "id": "legacy-11",
+    "round": 1
+  },
+  {
+    "project": "notes",
+    "title": "Explain NoteEchoes",
+    "q": "Tell me about NoteEchoes in under a minute.",
+    "answer": "I built NoteEchoes to turn spoken thoughts and imported documents into organized, searchable notes. It combines Flutter and Swift with a specialized Qwen3-0.6B model running locally through MLX. The key design is saving the note before AI enhancement, then validating the result and rejecting it if the user has edited the note. That keeps capture useful even when generation fails.",
+    "cue": "Capture → local Qwen → save before AI",
+    "trap": "Is every part of the app offline?",
+    "reply": "No. Core inference and storage are local, but model downloads, optional web lookup and feedback, and some speech fallback paths can use the network.",
+    "evidence": "Project implementation is supported by the supplied report; personal ownership comes from your résumé. Current TestFlight status, user adoption and device performance were not verified.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Capture → local Qwen → save before AI",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-12",
+    "round": 1
+  },
+  {
+    "project": "notes",
+    "title": "Why such a small model?",
+    "q": "Why Qwen3-0.6B for NoteEchoes?",
+    "answer": "The task is constrained intent and action interpretation, which makes a small specialized model a reasonable fit for an iPhone. The implementation uses Qwen3-0.6B with structured validation, while document answers use cited excerpts. I would justify the final model choice with device latency, memory, and task-quality measurements rather than parameter count alone.",
+    "cue": "Constrained task → device fit → measure",
+    "trap": "How much faster is it than a larger model?",
+    "reply": "I do not have a verified comparative device benchmark. I would measure cold start, warm latency, memory and battery under the same workload.",
+    "evidence": "The report confirms Qwen3-0.6B and local MLX configuration. Device benchmark results and the original model-selection rationale are unknown. Rationale here is a design explanation, not measured evidence.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Constrained task → device fit → measure",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-13",
+    "round": 1
+  },
+  {
+    "project": "notes",
+    "title": "Explain your fine-tuning",
+    "q": "How is the NoteEchoes model adapted?",
+    "answer": "The training pipeline adapts pretrained Qwen3-0.6B with QLoRA and rsLoRA. It keeps the base in four-bit NF4 and trains adapters on the expected completions, with prompt tokens masked from the loss. Deployment is a separate eight-bit MLX artifact. The distinction is important: training quantization and inference quantization are different stages.",
+    "cue": "Pretrained base → completion loss → separate deployment",
+    "trap": "What are the adapter settings?",
+    "reply": "The inspected initial configuration uses rank 32, alpha 64, and dropout 0.05, targeting attention and MLP projections. I would check the run artifacts before saying those settings produced the deployed checkpoint.",
+    "evidence": "Supplied report confirms configuration, not a complete training-to-shipped-weights chain. Initial learning rate 4e-5; one epoch; sequence length 1,024. No established contribution from the experimental GRPO code.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Pretrained base → completion loss → separate deployment",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-14",
+    "round": 1
+  },
+  {
+    "project": "notes",
+    "title": "A user edits during generation",
+    "q": "What happens if AI finishes after the user edits a note?",
+    "answer": "The note is saved first. Before enhancement starts, the service records a fingerprint; before applying the result, it checks the current note against that snapshot. If the user edited or deleted it, the AI result is discarded. The user’s newer state takes precedence over delayed generation.",
+    "cue": "Save → fingerprint → reject stale output",
+    "trap": "Does a timeout stop the underlying model?",
+    "reply": "Not necessarily. A timeout can stop waiting without stopping native computation. The stale-result checks still matter even after the UI has moved on.",
+    "evidence": "Report describes inspected implementation and tests, but those application tests and device behavior were not executed in the review.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Save → fingerprint → reject stale output",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-15",
+    "round": 1
+  },
+  {
+    "project": "notes",
+    "title": "Explain hybrid retrieval",
+    "q": "How does NoteEchoes find the right note?",
+    "answer": "It combines SQLite full-text search with optional multilingual E5 embeddings and merges their rankings using reciprocal rank fusion. Lexical search catches exact terms; semantic search catches related meaning. The active conversation and PDF paths return cited excerpts. That keeps the answer tied to the stored material rather than asking the action model to improvise document answers.",
+    "cue": "Exact terms + meaning → rank fusion → excerpts",
+    "trap": "Is the knowledge graph a reasoning engine?",
+    "reply": "It organizes related notes into topics and displays topic membership. I would describe it as a note-and-topic graph, not an entity-reasoning engine.",
+    "evidence": "Report: FTS5/BM25; multilingual-e5-small, 384 dimensions; RRF 1/(60+rank); up to 15 candidates per retrieval branch, six final by default. No learned reranker in this path; quality metrics unverified.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Exact terms + meaning → rank fusion → excerpts",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-16",
+    "round": 1
+  },
+  {
+    "project": "notes",
+    "title": "What would you improve?",
+    "q": "What is the biggest weakness in NoteEchoes today?",
+    "answer": "The biggest evaluation gap is generalization. The synthetic score is useful for regressions, but normalized templates overlap with training and there is no completed matched base-model comparison. I would first build an independent real-language holdout, then measure device performance and strengthen failed-document retry handling.",
+    "cue": "Known gap → independent evaluation → recovery",
+    "trap": "What is the failed-document issue?",
+    "reply": "The review found that a failed PDF can be recognized by its existing hash and returned without checking completion. I would make deduplication status-aware so failed ingestion can be retried safely.",
+    "evidence": "The failed-PDF case is inferred from inspected code, not a reproduced or personally reported historical incident. Proposed improvements are not completed features.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Known gap → independent evaluation → recovery",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-17",
+    "round": 1
+  },
+  {
+    "project": "mflash",
+    "title": "Explain MFlash",
+    "q": "What makes MFlash an engineering project rather than a model demo?",
+    "answer": "I built MFlash as a macOS assistant for local document retrieval and scoped file operations. It separates action suggestions from execution policy: supported actions pass through argument, authorization, and state checks before execution. The file paths include hashes, retry receipts, journaling, and collision-safe undo. The strongest part is controlling what happens around a model decision, not just generating the decision.",
+    "cue": "Local assistant → execution boundary → recovery",
+    "trap": "Is it a production-ready computer-use agent?",
+    "reply": "It is a design preview with supported workflows and experimental visual paths. I would demonstrate specific tested operations rather than claim general autonomous reliability.",
+    "evidence": "Supplied MFlash report. Personal project ownership is résumé-based; the code review itself cannot establish authorship or adoption. Ordinary scheduler policy and explicit workbench approval are distinct.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Local assistant → execution boundary → recovery",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-18",
+    "round": 1
+  },
+  {
+    "project": "mflash",
+    "title": "Why two decision models?",
+    "q": "How do the classifier and MPNet ranker differ?",
+    "answer": "The classifier maps request and observation features to an action template. The MPNet ranker compares a state with supplied candidate actions using learned projection heads. One selects a structured pattern; the other ranks alternatives. Neither model’s score grants permission to execute—the execution layer makes that decision separately.",
+    "cue": "Template selection → candidate ranking → separate authority",
+    "trap": "Are 74 templates the same as 74 tools?",
+    "reply": "No. That is the template count from a historical training run. Templates include argument-binding patterns, so it is not a count of independent tools or universal capabilities.",
+    "evidence": "Report: random-initialized MLP classifier; frozen all-mpnet-base-v2 backbone with distinct state/action projection heads. The 74 count is data-derived and historical.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Template selection → candidate ranking → separate authority",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-19",
+    "round": 1
+  },
+  {
+    "project": "mflash",
+    "title": "Defend the perfect ranker score",
+    "q": "Your ranker got 100%. Why is that not enough?",
+    "answer": "The recorded score is 1,381 out of 1,381 development candidate sets. The correct action was already supplied among the choices. That measures ranking, not discovering actions, understanding the screen, executing safely, or completing a workflow. I would validate real task completion separately before making an automation reliability claim.",
+    "cue": "Development candidates → narrow metric → task success",
+    "trap": "Were the negative examples mined online?",
+    "reply": "The inspected data generators use authored alternatives and sampled distractors. Online hard-negative mining and their measured difficulty were not established.",
+    "evidence": "The score is from a saved report and was not rerun. Do not call it a fresh held-out test or 100% automation accuracy.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Development candidates → narrow metric → task success",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-20",
+    "round": 1
+  },
+  {
+    "project": "mflash",
+    "title": "Why contrastive learning?",
+    "q": "Explain the ranking objective without jargon.",
+    "answer": "The ranker learns to score the correct action above plausible alternatives for the same state. MPNet supplies text representations; trainable projection heads learn how state and action representations should align. The loss penalizes competing negatives that score too highly. This trains selection among candidates rather than free-form action generation.",
+    "cue": "Correct action > alternatives → learned alignment",
+    "trap": "Did you use in-batch negatives?",
+    "reply": "There are two recipes: one mixes hard-negative and symmetric in-batch losses, while another compares each example with its own negatives. I would identify the checkpoint’s recipe before attributing either to it.",
+    "evidence": "Report records two distinct training scripts. Which full recipe produced the current root checkpoint is unknown.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Correct action > alternatives → learned alignment",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-21",
+    "round": 1
+  },
+  {
+    "project": "mflash",
+    "title": "Changed file after approval",
+    "q": "What if the source file changes after a workbench preview?",
+    "answer": "The workbench captures a source digest and checks the action against the trusted grant before execution. It recomputes the digest and rejects a changed source. If an earlier attempt is still pending, it requires review instead of blindly retrying. Approval applies to the reviewed operation and state, not whatever happens to exist later.",
+    "cue": "Preview digest → grant match → reject changes",
+    "trap": "What evidence do you have that this works?",
+    "reply": "The supplied review ran 12 isolated executor tests covering cases such as retries, cancellation, collisions, and changed sources. That supports those tested paths, not all production workflows.",
+    "evidence": "Test result is reported by the supplied briefing, not rerun in this interview-dashboard task. External-process races are not fully covered by the executor guarantees.",
+    "label": "Report-backed implementation",
+    "hint": "Use this sequence: Preview digest → grant match → reject changes",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-22",
+    "round": 1
+  },
+  {
+    "project": "rag",
+    "title": "Explain your RAG assistant",
+    "q": "Give me a concise overview of the codebase assistant.",
+    "answer": "I built a codebase assistant using LangGraph, Claude, Pinecone, and FastAPI, with asynchronous retrieval and self-correcting search. The aim was to answer developer questions using repository evidence. The key engineering issue is separating missing evidence from poor generation: a better prompt cannot recover code that retrieval never found.",
+    "cue": "Developer questions → repository evidence → diagnose retrieval",
+    "trap": "What did the evaluation prove?",
+    "reply": "My résumé lists Ragas evaluation, but I do not have the run results here. I would discuss the evaluation dimensions without inventing an improvement percentage.",
+    "evidence": "Opening uses résumé claims. No repository briefing was supplied for this project; exact agent roles, embeddings, chunking and results remain unverified.",
+    "label": "Résumé-backed overview",
+    "hint": "Use this sequence: Developer questions → repository evidence → diagnose retrieval",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-23",
+    "round": 1
+  },
+  {
+    "project": "rag",
+    "title": "Design the graph",
+    "q": "What would a sensible LangGraph workflow look like?",
+    "answer": "I would use a small, explicit workflow: understand the question, retrieve code, inspect evidence gaps, then answer with source references. If evidence is weak, rewrite the query and retry within a strict budget. I would track retrieved files, repository version, and attempted queries in state so retries add information instead of repeating the same search.",
+    "cue": "Question → retrieve → inspect → answer",
+    "trap": "Why not use more agents?",
+    "reply": "Every extra agent adds latency, cost, and coordination failure modes. I would add one only when a controlled evaluation shows that its responsibility improves the result.",
+    "evidence": "Proposed design for the résumé project, not a recovered description of its actual graph. No fabricated production outcomes.",
+    "label": "Recommended RAG design",
+    "hint": "Use this sequence: Question → retrieve → inspect → answer",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-24",
+    "round": 1
+  },
+  {
+    "project": "rag",
+    "title": "Chunking and freshness",
+    "q": "How would you index a changing codebase?",
+    "answer": "I would chunk around functions and classes where possible, preserve file paths and symbols, and attach a repository revision to every chunk. Changes should trigger targeted reindexing and removal of deleted code. At query time, I would combine exact symbol lookup with semantic retrieval and include enough surrounding context to understand dependencies.",
+    "cue": "Symbol boundaries → revision metadata → targeted updates",
+    "trap": "Would you always use a reranker?",
+    "reply": "No. I would add one only if ranking errors justify its latency and cost on representative queries.",
+    "evidence": "Recommended indexing approach; parser, embedding model, chunk sizes, incremental indexing and reranking are not confirmed implementation details.",
+    "label": "Recommended RAG design",
+    "hint": "Use this sequence: Symbol boundaries → revision metadata → targeted updates",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-25",
+    "round": 1
+  },
+  {
+    "project": "experience",
+    "title": "Tell me about yourself",
+    "q": "Give me your introduction in 45 seconds.",
+    "answer": "I’m an AI engineer with a foundation in data engineering. At Bank of America, I build document-extraction and retrieval workflows, owning work from data preparation through APIs and user review. Earlier, I worked on Spark and Databricks pipelines at Sedin. My projects extend that experience into local AI and controlled automation. The common thread is turning model outputs into systems people can actually use.",
+    "cue": "AI role → data foundation → usable systems",
+    "trap": "Why are you targeting AI engineering?",
+    "reply": "I enjoy the boundary between models and software: choosing the task, preparing the data, evaluating behavior, and building reliable execution around it. My experience spans that full path.",
+    "evidence": "Résumé and supplied project reports. No new metrics, employers, responsibilities, or adoption claims introduced.",
+    "label": "Résumé-backed experience",
+    "hint": "Use this sequence: AI role → data foundation → usable systems",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-26",
+    "round": 1
+  },
+  {
+    "project": "experience",
+    "title": "Your contribution at Sedin",
+    "q": "What did you do at Sedin Technologies?",
+    "answer": "At Sedin, I worked on Databricks ETL and ELT pipelines using Spark, PySpark, Python, and SQL, processing over 5 TB of transactional data daily. I also developed backend services and NLP summarization pipelines. That experience gave me the data-processing foundation I now bring to AI workflows: transforming inputs, integrating services, and evaluating outputs.",
+    "cue": "5 TB/day → Spark pipelines → AI foundation",
+    "trap": "Was 5 TB your personal throughput improvement?",
+    "reply": "No. It describes the processing scale stated on my résumé, not an improvement percentage or an individual benchmark. I would explain my specific pipeline contribution separately.",
+    "evidence": "Résumé-backed. Source formats, cluster size, scheduling, table design and actual incidents have not been supplied.",
+    "label": "Résumé-backed experience",
+    "hint": "Use this sequence: 5 TB/day → Spark pipelines → AI foundation",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-27",
+    "round": 1
+  },
+  {
+    "project": "experience",
+    "title": "Your Cactus Club project",
+    "q": "Describe the file-sharing application you built.",
+    "answer": "At Cactus Club, I built an internal React file-sharing application for about 200 users, supporting files up to 10 MB. It used Cognito authentication, encrypted S3 storage, and DynamoDB for sharing history and audit metadata. I also implemented key-pair generation and recipient-only decryption, connecting the user experience with access and data protection.",
+    "cue": "User need → storage/access → recipient decryption",
+    "trap": "Does encrypted S3 storage mean only the recipient can decrypt?",
+    "reply": "No. Storage encryption and recipient-only decryption are separate protections. I would explain the key ownership and client decryption flow from the implementation before claiming end-to-end guarantees.",
+    "evidence": "Résumé-backed. Cryptographic algorithms, private-key storage, recovery and threat-model details are not supplied.",
+    "label": "Résumé-backed experience",
+    "hint": "Use this sequence: User need → storage/access → recipient decryption",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-28",
+    "round": 1
+  },
+  {
+    "project": "experience",
+    "title": "Explain your summarization work",
+    "q": "How did your earlier NLP summarization pipeline work?",
+    "answer": "At Sedin, I worked on extractive summarization using TF-IDF, PageRank, and PySpark, with ROUGE for evaluation. The approach selects important source sentences instead of generating new ones. The tradeoff is easier source traceability, but sentence selection can still lose context or produce a disjointed summary.",
+    "cue": "Extractive → source sentences → quality tradeoff",
+    "trap": "Does a high ROUGE score prove a good summary?",
+    "reply": "No. ROUGE measures overlap with reference text. I would also assess coverage, redundancy, coherence, and whether the summary preserves the source’s meaning.",
+    "evidence": "Résumé confirms the named methods. Exact graph construction, preprocessing and measured ROUGE results remain unknown.",
+    "label": "Résumé-backed experience",
+    "hint": "Use this sequence: Extractive → source sentences → quality tradeoff",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-29",
+    "round": 1
+  },
+  {
+    "project": "experience",
+    "title": "Lead with ownership",
+    "q": "What does end-to-end ownership mean in your Bank of America role?",
+    "answer": "I worked directly with clients to understand the extraction requirements, prepared training data, integrated the model into the processing workflow, and built validation, APIs, and the review UI. That meant connecting the requested fields to a usable downstream output and keeping the review process part of the product—not treating the model as the whole solution.",
+    "cue": "Requirements → implementation → usable delivery",
+    "trap": "How did you prioritize requirements?",
+    "reply": "I would prioritize critical fields and failure consequences first, define acceptance examples with stakeholders, and separate must-have correctness from convenience features.",
+    "evidence": "Ownership is user-confirmed and résumé-supported. Prioritization answer is a recommended method, not a supplied historical process.",
+    "label": "Confirmed experience",
+    "hint": "Use this sequence: Requirements → implementation → usable delivery",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-30",
+    "round": 1
+  },
+  {
+    "project": "experience",
+    "title": "A credible weakness answer",
+    "q": "What would you improve in one of your projects?",
+    "answer": "For NoteEchoes, I would strengthen the evaluation before adding more model complexity. The existing synthetic benchmark catches regressions, but template overlap limits what it says about unfamiliar requests. I would add an independent human-authored holdout, compare against the base model under matched settings, and measure actual device performance.",
+    "cue": "Specific gap → concrete plan → measurable outcome",
+    "trap": "Would you remove the 96.3% result?",
+    "reply": "I would keep it only with its exact scope: selected action fields on synthetic cases. I would not present it as general real-world accuracy.",
+    "evidence": "Grounded in the supplied NoteEchoes review. These are proposed improvements, not completed work.",
+    "label": "Report-backed reflection",
+    "hint": "Use this sequence: Specific gap → concrete plan → measurable outcome",
+    "rubric": [
+      "Led with a direct answer",
+      "Explained one concrete decision",
+      "Stayed within the evidence and handled the tradeoff"
+    ],
+    "seconds": 45,
+    "id": "legacy-31",
+    "round": 1
+  },
+  {
+    "id": "round-2-32",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Fine-tuning, RAG, or prompting?",
+    "q": "A new document workflow performs poorly. How do you choose between prompting, RAG, and fine-tuning?",
+    "answer": "I would first classify the failure. Missing external knowledge points toward retrieval. Inconsistent behavior or output mapping may justify fine-tuning after a strong prompt baseline. Format failures may need constrained output and validation. I would compare the simplest viable approaches on the same held-out examples, using task accuracy, latency, cost, and review effort.",
+    "cue": "Diagnose → baseline → compare",
+    "trap": "Can fine-tuning keep enterprise knowledge current?",
+    "reply": "It can encode information, but frequent factual updates are usually easier to manage through retrieval. Fine-tuning is not a dependable database of current facts.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Diagnose → baseline → compare",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-33",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Explain LoRA mathematically",
+    "q": "What does LoRA actually train, and what does rank control?",
+    "answer": "LoRA freezes a weight matrix W and learns an update expressed as the product of two smaller matrices: delta W equals B times A. Rank controls the size of that update space and the number of trainable parameters. Higher rank gives more capacity but also increases memory and overfitting risk. I would choose it using held-out task performance.",
+    "cue": "Frozen W → B×A → capacity tradeoff",
+    "trap": "Is doubling rank guaranteed to improve quality?",
+    "reply": "No. More parameters cannot fix poor labels or leakage. I would compare ranks with the same data, evaluation protocol, and realistic compute budget.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Frozen W → B×A → capacity tradeoff",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "Hugging Face · LoRA",
+      "url": "https://huggingface.co/docs/peft/en/conceptual_guides/lora"
+    }
+  },
+  {
+    "id": "round-2-34",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "What QLoRA saves",
+    "q": "Does four-bit QLoRA mean the entire training process uses four-bit memory?",
+    "answer": "No. QLoRA stores the frozen base weights in a quantized representation and trains adapters. Computation, activations, adapter parameters, gradients, and optimizer state still require memory at other precisions. The saving is substantial for base weights, but sequence length and activation storage can still make a training run run out of memory.",
+    "cue": "Quantized weights → train adapters → activation budget",
+    "trap": "What would you change first if training runs out of memory?",
+    "reply": "I would inspect memory usage, then reduce sequence length or microbatch size, consider gradient checkpointing, and recover the desired effective batch through accumulation where appropriate.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Quantized weights → train adapters → activation budget",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "Hugging Face · Quantization",
+      "url": "https://huggingface.co/docs/peft/developer_guides/quantization"
+    }
+  },
+  {
+    "id": "round-2-35",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Loss versus task success",
+    "q": "Why can training loss fall while document extraction gets worse?",
+    "answer": "Token-level loss averages prediction quality across the target sequence. It may improve on common formatting while rare critical fields get worse. I would track held-out field exact match, missing-field handling, schema validity, and error severity alongside loss. A lower loss is useful evidence, but the checkpoint must meet the actual extraction objective.",
+    "cue": "Token objective → field objective → checkpoint",
+    "trap": "Why mask prompt tokens in completion-only training?",
+    "reply": "The loss then focuses on predicting the response rather than reproducing the prompt. The prompt still provides context to the model.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Token objective → field objective → checkpoint",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "PyTorch · CrossEntropyLoss",
+      "url": "https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html"
+    }
+  },
+  {
+    "id": "round-2-36",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Detect overfitting and leakage",
+    "q": "Your training score rises sharply. What convinces you the model actually improved?",
+    "answer": "I would compare training and validation behavior on data separated by document family, source, or user scenario, then audit near duplicates and shared templates. I would inspect per-class and difficult-case results, not just the average. Final selection should use validation data; a genuinely held-out test should be reserved for the final assessment.",
+    "cue": "Independent split → failure slices → untouched test",
+    "trap": "What if the same template has different IDs in train and test?",
+    "reply": "The rows are different, but the language pattern may be effectively shared. I would normalize identifiers and test on new template families before claiming generalization.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Independent split → failure slices → untouched test",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-37",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Tokenization and truncation",
+    "q": "Why does tokenization matter for your tax-document extraction pipeline?",
+    "answer": "Tokenization determines how much source text fits and how fields are represented. Long tables, identifiers, and multilingual text can consume tokens differently. I would inspect token counts, preserve relevant headers and rows, and avoid silently truncating the evidence needed for a field. Chunking should retain enough context to associate amounts with the correct entity.",
+    "cue": "Token budget → field context → no silent truncation",
+    "trap": "Would you just truncate the last half of the document?",
+    "reply": "No. Important fields may appear near the end. I would select relevant sections or process bounded sections and reconcile their evidence.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Token budget → field context → no silent truncation",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-38",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Attention and KV cache",
+    "q": "Explain attention and why long contexts make inference expensive.",
+    "answer": "Attention compares queries with keys to weight the value representations a token uses. Standard full attention has quadratic score computation in sequence length during prefill. During autoregressive generation, a KV cache reuses prior keys and values, reducing repeated work while consuming memory. Longer prompts therefore affect prefill latency, generation cost, and concurrent capacity.",
+    "cue": "Queries/keys/values → prefill → cached decoding",
+    "trap": "Does a KV cache make long context free?",
+    "reply": "No. The cache grows with context, layers, and key/value dimensions, and each new token still attends to the retained context. Optimized kernels change efficiency, not that basic tradeoff.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Queries/keys/values → prefill → cached decoding",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-39",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Class imbalance and abstention",
+    "q": "How would you evaluate a classifier with many rare action templates?",
+    "answer": "I would inspect per-class precision and recall, macro averages, a confusion matrix, and the cost of each mistake. A dominant class can hide poor rare-action performance in overall accuracy. I would tune an abstention policy on held-out data and report both accepted-action accuracy and coverage, especially for mutating operations.",
+    "cue": "Per-class metrics → risk → coverage",
+    "trap": "Can you get perfect accuracy by rejecting everything?",
+    "reply": "Accepted-case accuracy becomes uninformative if coverage is zero. I would report coverage, wrong accepted actions, and the total task-success rate together.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Per-class metrics → risk → coverage",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-40",
+    "round": 2,
+    "project": "rag",
+    "title": "Choose chunk boundaries",
+    "q": "How would you choose chunk size for code retrieval?",
+    "answer": "I would start with function or class boundaries and preserve file paths, symbols, and nearby context. Small chunks improve focus but can lose dependencies; large chunks preserve context but dilute retrieval and consume the prompt budget. I would compare alternatives using representative questions, retrieval recall, answer correctness, and latency.",
+    "cue": "Code structure → context tradeoff → evaluate",
+    "trap": "Why not choose one fixed token count for every file?",
+    "reply": "Code structure and task scope vary. A token limit is a useful bound, but blindly cutting across a signature and its body can break the evidence.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Code structure → context tradeoff → evaluate",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-41",
+    "round": 2,
+    "project": "rag",
+    "title": "Embedding model versus reranker",
+    "q": "What is the difference between an embedding retriever and a cross-encoder reranker?",
+    "answer": "An embedding retriever encodes queries and documents separately, which allows efficient search over precomputed document vectors. A cross-encoder examines a query and candidate together, often improving relevance judgments at greater per-pair cost. I would retrieve a manageable candidate set first and rerank only if the quality improvement justifies the latency.",
+    "cue": "Independent vectors → joint scoring → budget",
+    "trap": "Can a reranker recover a document the retriever never found?",
+    "reply": "No. It can reorder the candidate set. Missing evidence requires improving candidate recall or expanding retrieval.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Independent vectors → joint scoring → budget",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-42",
+    "round": 2,
+    "project": "rag",
+    "title": "Evaluate RAG properly",
+    "q": "Which metrics would you use to diagnose a RAG application?",
+    "answer": "I would evaluate retrieval recall and ranking quality separately from answer correctness and evidence support. Missing evidence suggests a retrieval issue; unsupported claims suggest a generation issue. I would also track abstentions, latency, and cost. Automated judges need calibration against human-reviewed examples, particularly when a metric will determine a release decision.",
+    "cue": "Retrieval → generation → human calibration",
+    "trap": "Is a high faithfulness score sufficient to ship?",
+    "reply": "No. A response can be faithful to an outdated source or fail to answer the question. Correctness, relevance, source quality, and operational behavior also matter.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Retrieval → generation → human calibration",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "Ragas · Evaluation metrics",
+      "url": "https://docs.ragas.io/en/latest/concepts/metrics/available_metrics/"
+    }
+  },
+  {
+    "id": "round-2-43",
+    "round": 2,
+    "project": "rag",
+    "title": "Prompt injection in retrieved code",
+    "q": "A retrieved README tells the assistant to send secrets to an external URL. What prevents it?",
+    "answer": "I would treat retrieved text as untrusted evidence. Tool permissions and data access must be enforced outside the model, with scoped credentials, validated arguments, and explicit controls for consequential actions. Prompts can reinforce the boundary, but they are not the authorization mechanism. I would test malicious content embedded in documents and code comments.",
+    "cue": "Untrusted text → external policy → adversarial tests",
+    "trap": "Would removing the phrase “ignore previous instructions” solve it?",
+    "reply": "No. Attacks can be indirect or obfuscated. The system must remain safe even when the model follows a malicious suggestion.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Untrusted text → external policy → adversarial tests",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-44",
+    "round": 2,
+    "project": "rag",
+    "title": "Tenant isolation and stale access",
+    "q": "How would you prevent one user’s documents from appearing in another user’s answer?",
+    "answer": "I would derive authorization from the authenticated identity and enforce it during retrieval, source fetching, and tool execution. Cache keys must include the relevant access scope and content version. Revoked permissions should invalidate access even if embeddings remain indexed. I would test cross-tenant queries and attempts to bypass filters through direct document IDs.",
+    "cue": "Identity → enforced scope → cache invalidation",
+    "trap": "Can you trust a tenant ID passed in the user’s prompt?",
+    "reply": "No. The authorization scope must come from trusted server-side identity and policy, not model output or user-supplied text.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Identity → enforced scope → cache invalidation",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-45",
+    "round": 2,
+    "project": "data",
+    "title": "Spark: lazy execution and shuffle",
+    "q": "What happens between a PySpark transformation and an action?",
+    "answer": "Transformations build a logical computation rather than immediately processing every row. An action triggers execution, and Spark plans the work into stages and tasks. Operations requiring redistribution, such as many joins and aggregations, introduce shuffles. I would inspect the plan and runtime metrics because data movement often dominates the cost.",
+    "cue": "Plan → action → shuffle cost",
+    "trap": "Would caching every intermediate DataFrame help?",
+    "reply": "No. Caching consumes memory and can cause spill or eviction. I would cache reused expensive results only when measurements justify it.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Plan → action → shuffle cost",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "Apache Spark · Performance tuning",
+      "url": "https://spark.apache.org/docs/latest/sql-performance-tuning"
+    }
+  },
+  {
+    "id": "round-2-46",
+    "round": 2,
+    "project": "data",
+    "title": "Broadcast versus shuffle join",
+    "q": "When would you use a broadcast join?",
+    "answer": "When one side is small enough to fit comfortably on each executor, broadcasting it can avoid shuffling the large side. I would consider serialized size, executor memory, concurrency, and join semantics rather than row count alone. If both sides are large, I would inspect partitioning, skew, filtering, and the chosen distributed join strategy.",
+    "cue": "Small side → memory budget → inspect plan",
+    "trap": "What if the supposedly small side suddenly grows?",
+    "reply": "A forced broadcast can cause memory pressure or failure. I would keep statistics current, monitor size, and avoid hard-coded hints without an operating bound.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Small side → memory budget → inspect plan",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "Apache Spark · Performance tuning",
+      "url": "https://spark.apache.org/docs/latest/sql-performance-tuning"
+    }
+  },
+  {
+    "id": "round-2-47",
+    "round": 2,
+    "project": "data",
+    "title": "Partitioning and small files",
+    "q": "How would you partition a large transactional dataset?",
+    "answer": "I would choose columns that match common filters and have manageable cardinality, then measure pruning and file sizes. Partitioning every unique customer can create too many tiny files. I would balance query access patterns, write volume, and maintenance, with compaction where appropriate. Physical partitioning should be a workload decision.",
+    "cue": "Query filters → manageable cardinality → file sizes",
+    "trap": "Is repartition the same as coalesce?",
+    "reply": "Repartition generally shuffles to redistribute data and can increase or decrease partitions. Coalesce commonly reduces partitions with less movement, but may preserve imbalance.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Query filters → manageable cardinality → file sizes",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "Apache Spark · Performance tuning",
+      "url": "https://spark.apache.org/docs/latest/sql-performance-tuning"
+    }
+  },
+  {
+    "id": "round-2-48",
+    "round": 2,
+    "project": "data",
+    "title": "Watermarks and late data",
+    "q": "What does a watermark do in a streaming pipeline?",
+    "answer": "A watermark uses observed event-time progress and an allowed delay to bound state and handle late records for supported stateful operations. It is not a guarantee that every older record will be discarded at one exact instant. I would define the business policy for very late data and provide a correction or reconciliation path.",
+    "cue": "Event time → bounded state → late-data policy",
+    "trap": "Does a watermark advance just because wall-clock time passes?",
+    "reply": "Generally it depends on event-time progress in the input. An idle or slow input can affect advancement, especially with multiple streams.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Event time → bounded state → late-data policy",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "Apache Spark · Structured Streaming",
+      "url": "https://spark.apache.org/docs/3.5.6/structured-streaming-programming-guide.html"
+    }
+  },
+  {
+    "id": "round-2-49",
+    "round": 2,
+    "project": "data",
+    "title": "Exactly-once: scope the claim",
+    "q": "Does a Spark checkpoint guarantee exactly-once writes to an external API?",
+    "answer": "No. A checkpoint can support recovery of source progress and processing state, but external side effects depend on the sink’s commit and deduplication behavior. I would use a stable event or batch identity and an idempotent destination operation. The guarantee must cover the source, processing, and sink together.",
+    "cue": "Checkpoint → sink semantics → idempotency",
+    "trap": "What about foreachBatch?",
+    "reply": "It can replay a batch after a failure. I would make the sink operation duplicate-safe using a stable batch identity and a durable commit protocol appropriate to that sink.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Checkpoint → sink semantics → idempotency",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "Apache Spark · Structured Streaming",
+      "url": "https://spark.apache.org/docs/3.5.6/structured-streaming-programming-guide.html"
+    }
+  },
+  {
+    "id": "round-2-50",
+    "round": 2,
+    "project": "data",
+    "title": "Incremental loads and schema changes",
+    "q": "How would you design incremental ingestion that tolerates updates and schema drift?",
+    "answer": "I would prefer a reliable change feed or monotonic source position, preserve operation type and source ordering, and make merges replay-safe. A timestamp watermark needs overlap and reconciliation if updates can arrive late. I would validate schema changes against a contract, allow compatible additions, and quarantine incompatible records with enough context to repair them.",
+    "cue": "Change identity → replay-safe merge → schema contract",
+    "trap": "Can you simply select rows newer than the last timestamp?",
+    "reply": "Only if the source guarantees that ordering and completeness. Equal timestamps, late commits, updates and deletes can otherwise be missed.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Change identity → replay-safe merge → schema contract",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-51",
+    "round": 2,
+    "project": "python",
+    "title": "Async, threads, and processes",
+    "q": "When would you use async def in a FastAPI endpoint?",
+    "answer": "For request paths that await nonblocking I/O, such as an async HTTP or database client. Calling blocking work inside async def can block the event loop. I would isolate CPU-heavy processing or model inference in an appropriate worker or serving system and bound concurrency so requests cannot overwhelm downstream capacity.",
+    "cue": "Await I/O → isolate blocking work → bound load",
+    "trap": "Does making an inference function async make it faster?",
+    "reply": "No. Declaring a function async does not parallelize its computation. Throughput depends on the execution backend, batching, scheduling, and resource limits.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Await I/O → isolate blocking work → bound load",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60,
+    "source": {
+      "title": "FastAPI · Concurrency",
+      "url": "https://fastapi.tiangolo.com/async/"
+    }
+  },
+  {
+    "id": "round-2-52",
+    "round": 2,
+    "project": "python",
+    "title": "Secure an extraction API",
+    "q": "What controls belong around your model extraction endpoint?",
+    "answer": "I would authenticate the caller, authorize access to the specific document, enforce size and format limits, and validate the output contract. Long jobs should use a durable job ID with status and idempotency. I would add request limits, deadlines, audit events, and careful log redaction so operational visibility does not expose document contents.",
+    "cue": "Identity → resource authorization → bounded jobs",
+    "trap": "Is a valid login enough to download any result?",
+    "reply": "No. Each job and result needs object-level authorization; knowing a job ID must not grant access.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Identity → resource authorization → bounded jobs",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-53",
+    "round": 2,
+    "project": "python",
+    "title": "Reliability tests that matter",
+    "q": "What would you test beyond a successful extraction example?",
+    "answer": "I would cover missing fields, ambiguous values, malformed files, duplicate requests, downstream timeouts, permission failures, and reprocessing. For model changes, I would use a frozen regression set with critical-field slices. For file operations, I would test state changes and crashes around side effects. Tests should target failure consequences, not merely mirror the code.",
+    "cue": "Bad input → partial failure → regression",
+    "trap": "Would you mock every external dependency?",
+    "reply": "Unit tests can use mocks, but contract and integration tests must verify real boundaries. Otherwise a mocked success can hide a broken protocol or incompatible response.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Bad input → partial failure → regression",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-54",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Deployment drift and rollback",
+    "q": "How do you detect a model that degrades after deployment?",
+    "answer": "I would monitor input changes, review and correction rates, and task-quality samples alongside latency and failures. Unlabeled drift is an alert, not proof of quality loss. I would version the model, prompt, schema, and evaluation set, roll out gradually, and retain a tested rollback path when measured quality or operational limits regress.",
+    "cue": "Observe → label → controlled rollout",
+    "trap": "Why not automatically retrain whenever drift rises?",
+    "reply": "Drift may be harmless or caused by a pipeline bug. I would identify the cause, curate labels, and validate a candidate before changing production behavior.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Observe → label → controlled rollout",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-2-55",
+    "round": 2,
+    "project": "fundamentals",
+    "title": "Measure the claim, not the headline",
+    "q": "How would you report confidence in an accuracy estimate?",
+    "answer": "I would state the population, metric definition, sample size, and uncertainty. For independent binary outcomes, a binomial interval is a useful starting point. Correlated templates or documents reduce effective independence, so I would consider grouping and stratified results. A narrow interval does not repair a test set that fails to represent real traffic.",
+    "cue": "Define population → quantify uncertainty → check representativeness",
+    "trap": "Does 1,080 synthetic cases make the benchmark representative?",
+    "reply": "No. Sample size and representativeness are different. Repeated templates can produce precise estimates for a narrow distribution without supporting broad generalization.",
+    "label": "Technical answer",
+    "hint": "Build your answer around: Define population → quantify uncertainty → check representativeness",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 60
+  },
+  {
+    "id": "round-3-56",
+    "round": 3,
+    "project": "coding",
+    "title": "SQL: latest successful state",
+    "q": "Table events(customer_id, event_id, event_time, ingested_at, status). Return customers whose latest event is successful. Assume non-null timestamps and a unique event_id; use event time, then ingestion time, then ID to break ties.",
+    "answer": "I would rank every customer’s events before filtering on status. Otherwise I could return an old success even when the latest event failed. ROW_NUMBER gives one deterministic winner using the stated ordering. The final filter answers whether that winner is successful.",
+    "cue": "Rank all → deterministic winner → filter status",
+    "trap": "What if “latest” means the latest arrival instead?",
+    "reply": "I would make ingested_at the primary ordering key. The business definition of latest determines the query.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Rank all → deterministic winner → filter status",
+    "evidence": "SQL reference tested with SQLite: newer failure suppresses older success, ties resolve by ingestion then ID. Null timestamp policy must be specified if the schema permits nulls.",
+    "rubric": [
+      "Ranked before filtering status",
+      "Used deterministic tie-breakers",
+      "Explained event time versus arrival time"
+    ],
+    "seconds": 300,
+    "code": "WITH ranked AS (\n  SELECT *, ROW_NUMBER() OVER (\n    PARTITION BY customer_id\n    ORDER BY event_time DESC, ingested_at DESC, event_id DESC\n  ) AS rn\n  FROM events\n)\nSELECT customer_id, event_id, event_time, status\nFROM ranked\nWHERE rn = 1 AND status = 'success';"
+  },
+  {
+    "id": "round-3-57",
+    "round": 3,
+    "project": "coding",
+    "title": "SQL: a rolling seven-day total",
+    "q": "Table daily_revenue(day DATE PRIMARY KEY, revenue NUMERIC) contains exactly one row per calendar day, including zero-revenue days. Compute the total for each day and the preceding six days.",
+    "answer": "Because the input has one row for every calendar day, a seven-row window represents seven days. I would order by day and use six preceding rows plus the current row. If dates are missing, I would first join to a date spine or use a suitable date-range window for the database dialect.",
+    "cue": "Dense calendar → ordered window → missing-day policy",
+    "trap": "What happens at the beginning of the table?",
+    "reply": "The total uses the available rows. If the requirement demands seven complete days, I would expose a window count and filter or label incomplete windows.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Dense calendar → ordered window → missing-day policy",
+    "evidence": "Reference tested on eight daily rows, including a zero-revenue day. ROWS is a row-count frame, not an elapsed-time frame.",
+    "rubric": [
+      "Stated the complete-calendar assumption",
+      "Used the correct inclusive window",
+      "Handled missing or incomplete days"
+    ],
+    "seconds": 300,
+    "code": "SELECT day,\n       SUM(revenue) OVER (\n         ORDER BY day\n         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW\n       ) AS revenue_7d,\n       COUNT(*) OVER (\n         ORDER BY day\n         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW\n       ) AS days_in_window\nFROM daily_revenue\nORDER BY day;"
+  },
+  {
+    "id": "round-3-58",
+    "round": 3,
+    "project": "coding",
+    "title": "SQL: stop a join from inflating money",
+    "q": "Tables orders(order_id PRIMARY KEY, customer_id, amount) and order_items(item_id PRIMARY KEY, order_id). Return total order amount per customer for orders having at least one item.",
+    "answer": "I would use EXISTS because I only need to know whether an item exists. A direct join creates one row per item and can multiply the order amount. The aggregation should preserve one row per qualifying order before summing by customer.",
+    "cue": "Preserve grain → EXISTS → sum once",
+    "trap": "Could SUM(DISTINCT amount) repair the join?",
+    "reply": "No. Two different orders can have the same amount. Distinct amounts would incorrectly collapse legitimate orders.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Preserve grain → EXISTS → sum once",
+    "evidence": "Reference tested with multiple items per order, equal amounts on separate orders, and an order without items.",
+    "rubric": [
+      "Identified the one-order grain",
+      "Avoided item-driven duplication",
+      "Rejected SUM(DISTINCT amount) as a general fix"
+    ],
+    "seconds": 300,
+    "code": "SELECT o.customer_id, SUM(o.amount) AS total_amount\nFROM orders AS o\nWHERE EXISTS (\n  SELECT 1 FROM order_items AS i\n  WHERE i.order_id = o.order_id\n)\nGROUP BY o.customer_id;"
+  },
+  {
+    "id": "round-3-59",
+    "round": 3,
+    "project": "coding",
+    "title": "Python: stream the latest event",
+    "q": "Given an iterable of dictionaries with customer_id, event_id, event_time and ingested_at, keep one latest event per customer. Timestamps are comparable timezone-normalized values; IDs are comparable unique integers. Return results ordered by customer ID.",
+    "answer": "I would maintain one best event per customer and compare a tuple of event time, ingestion time, and event ID. This handles out-of-order input without sorting all events. Processing takes O(n), plus O(k log k) to order the k customers, and O(k) storage. I would validate timestamp and key types at the input boundary.",
+    "cue": "One winner per key → tuple comparison → O(k) memory",
+    "trap": "What if there are too many customers for memory?",
+    "reply": "I would partition the data and use an external aggregation or database, rather than treating an in-memory dictionary as an unlimited solution.",
+    "label": "Worked example",
+    "hint": "Build your answer around: One winner per key → tuple comparison → O(k) memory",
+    "evidence": "Reference tested with empty input, ties, out-of-order events, and multiple customers. Assumes all customer IDs can be sorted consistently.",
+    "rubric": [
+      "Handled out-of-order input and ties",
+      "Gave correct time and space complexity",
+      "Defined assumptions and an external-memory alternative"
+    ],
+    "seconds": 300,
+    "code": "def latest_by_customer(events):\n    best = {}\n    def order(event):\n        return (event[\"event_time\"], event[\"ingested_at\"],\n                event[\"event_id\"])\n    for event in events:\n        key = event[\"customer_id\"]\n        if key not in best or order(event) > order(best[key]):\n            best[key] = dict(event)\n    return [best[key] for key in sorted(best)]"
+  },
+  {
+    "id": "round-3-60",
+    "round": 3,
+    "project": "coding",
+    "title": "Python: merge overlapping intervals",
+    "q": "Given integer intervals [start, end], merge overlaps and touching endpoints. Reject intervals where start > end. Return sorted merged intervals.",
+    "answer": "I would sort by start time, then maintain the last merged interval. If the next start is at or before the last end, I extend that interval; otherwise I append a new one. Sorting costs O(n log n), followed by a linear scan. I would clarify whether touching intervals count as overlapping before coding.",
+    "cue": "Sort → compare last end → extend or append",
+    "trap": "How would half-open interval semantics change it?",
+    "reply": "If adjacent half-open intervals should remain separate, I would use a strict overlap comparison. The merge rule must match the domain’s boundary convention.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Sort → compare last end → extend or append",
+    "evidence": "Reference tested for empty input, nested intervals, touching endpoints, unsorted input and invalid bounds. Stores a sorted copy and does not mutate input pairs.",
+    "rubric": [
+      "Clarified endpoint semantics",
+      "Handled nesting, empty input and invalid intervals",
+      "Explained O(n log n) sorting cost"
+    ],
+    "seconds": 300,
+    "code": "def merge_intervals(intervals):\n    ordered = sorted((start, end) for start, end in intervals)\n    if any(start > end for start, end in ordered):\n        raise ValueError(\"start must be <= end\")\n    merged = []\n    for start, end in ordered:\n        if merged and start <= merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged"
+  },
+  {
+    "id": "round-3-61",
+    "round": 3,
+    "project": "coding",
+    "title": "Python: limit concurrent retrieval",
+    "q": "Implement async retrieval for a finite list of document IDs using fetch(doc_id). Preserve input order, limit concurrent calls, and apply a per-call timeout. Assume fetch supports cooperative cancellation.",
+    "answer": "I would use a semaphore to limit active fetches and apply the timeout only after acquiring a slot. I would return a per-document outcome so one failure does not discard successful results. This bounds active I/O, but scheduling every input still consumes memory; for very large inputs, I would use a bounded worker queue.",
+    "cue": "Semaphore → timeout after slot → per-item outcome",
+    "trap": "Does this guarantee a timed-out server request stopped?",
+    "reply": "No. Cooperative cancellation stops the client wait only as supported by the coroutine. The remote operation may continue, so side effects still require idempotency.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Semaphore → timeout after slot → per-item outcome",
+    "evidence": "Python 3.11+ reference. Tested for ordering, maximum active calls, timeout, individual error, empty input and invalid limit. Overall cancellation is not swallowed; do not expose raw exception text to clients.",
+    "rubric": [
+      "Bounded active calls and preserved order",
+      "Handled timeout and individual failure",
+      "Explained task-memory and remote-cancellation limits"
+    ],
+    "seconds": 300,
+    "code": "import asyncio\n\nasync def retrieve_many(ids, fetch, limit=4, timeout=5.0):\n    if limit < 1 or timeout <= 0:\n        raise ValueError(\"limit and timeout must be positive\")\n    slots = asyncio.Semaphore(limit)\n    async def one(doc_id):\n        async with slots:\n            try:\n                value = await asyncio.wait_for(fetch(doc_id), timeout)\n                return {\"id\": doc_id, \"value\": value, \"error\": None}\n            except TimeoutError:\n                return {\"id\": doc_id, \"value\": None, \"error\": \"timeout\"}\n            except Exception as exc:\n                return {\"id\": doc_id, \"value\": None,\n                        \"error\": type(exc).__name__}\n    return await asyncio.gather(*(one(doc_id) for doc_id in ids))",
+    "source": {
+      "title": "FastAPI · Concurrency",
+      "url": "https://fastapi.tiangolo.com/async/"
+    }
+  },
+  {
+    "id": "round-3-62",
+    "round": 3,
+    "project": "systems",
+    "title": "Design: enterprise extraction",
+    "q": "Design an extraction platform for 100,000 tax documents per day, with bursty arrivals, human review, auditability, and safe replay.",
+    "answer": "I would clarify document sizes, peak arrival rate, latency targets, and critical-field error tolerance. Then I would separate durable ingestion, parsing, model extraction, validation, review, and idempotent delivery. Each result would retain source evidence and processing versions. I would monitor queue age, review rate, field errors, and cost, and size workers against peak demand and measured service time.",
+    "cue": "Requirements → staged processing → recoverable delivery",
+    "trap": "Give me a capacity estimate instead of listing components.",
+    "reply": "100,000 per day averages about 1.16 documents per second. As a hypothetical example, a 10× peak and two seconds per document require about 24 concurrent processing slots at full utilization, before headroom. I would validate this against model batching and downstream limits.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Requirements → staged processing → recoverable delivery",
+    "evidence": "System-design scenario, not actual Bank of America scale. Example assumptions are explicitly hypothetical. Preserve approved human corrections across replay; model/prompt/schema versions belong in provenance.",
+    "rubric": [
+      "Clarified traffic, latency and critical fields",
+      "Included review, versioning and idempotency",
+      "Estimated capacity with explicit assumptions"
+    ],
+    "seconds": 180
+  },
+  {
+    "id": "round-3-63",
+    "round": 3,
+    "project": "systems",
+    "title": "Design: a multi-repository assistant",
+    "q": "Design a codebase assistant for many repositories with frequent commits and different access permissions.",
+    "answer": "I would index code with repository, revision, path, and symbol metadata, then enforce access scope before retrieval. Incremental indexing would update changed files and remove deleted content. A bounded workflow would retrieve evidence, resolve gaps, and answer with source references. I would evaluate answer quality by task type and monitor freshness, cost, and latency.",
+    "cue": "Revision-aware index → access scope → bounded search",
+    "trap": "What if an answer combines chunks from incompatible commits?",
+    "reply": "I would query a consistent repository revision or clearly identify mixed-version evidence. Version metadata should control retrieval, not merely decorate citations.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Revision-aware index → access scope → bounded search",
+    "evidence": "Proposed architecture for a RAG design interview. Exact RAG project implementation remains unverified.",
+    "rubric": [
+      "Enforced per-repository authorization",
+      "Handled updates, deletions and revision consistency",
+      "Defined stopping conditions and evaluation"
+    ],
+    "seconds": 180
+  },
+  {
+    "id": "round-3-64",
+    "round": 3,
+    "project": "systems",
+    "title": "Design: transactional lakehouse ingestion",
+    "q": "Design ingestion for 5 TB per day with updates, deletes, duplicate deliveries, and downstream analytics.",
+    "answer": "I would clarify source guarantees and freshness needs, land immutable raw changes with source positions, then validate and merge into curated tables using stable keys and ordering. Reprocessing must be deterministic, and deletes must propagate. I would partition for actual query patterns, manage file sizes, and monitor lag, quality, and reconciliation against the source.",
+    "cue": "Raw changes → ordered merge → reconcile",
+    "trap": "What if an older update arrives after a newer one?",
+    "reply": "I would compare source versions or change positions and prevent an older event from replacing newer state. Ingestion time alone is not sufficient.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Raw changes → ordered merge → reconcile",
+    "evidence": "Hypothetical design related to the scale on your résumé. The résumé does not establish a particular lakehouse format, CDC vendor, or streaming topology.",
+    "rubric": [
+      "Included source ordering and delete semantics",
+      "Made replay and merging duplicate-safe",
+      "Addressed file layout, lag and reconciliation"
+    ],
+    "seconds": 180
+  },
+  {
+    "id": "round-3-65",
+    "round": 3,
+    "project": "systems",
+    "title": "Design: serve a fine-tuned model",
+    "q": "How would you serve a fine-tuned extraction model under a strict latency and cost budget?",
+    "answer": "I would profile preprocessing, prefill, decoding, and validation separately. I would benchmark model size and quantization on the actual extraction set, then tune batching and concurrency within memory limits. Requests need bounded queues and deadlines. I would track tail latency and cost per accepted document, including retries and human review, and roll out model changes gradually.",
+    "cue": "Profile → benchmark → bounded serving",
+    "trap": "Why not maximize batch size?",
+    "reply": "Larger batches may improve throughput while increasing queueing and tail latency. I would optimize against the service-level objective and realistic arrival patterns.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Profile → benchmark → bounded serving",
+    "evidence": "Recommended design. No specific GPU, throughput or cost result is claimed for your past work.",
+    "rubric": [
+      "Separated latency components",
+      "Balanced throughput, memory and tail latency",
+      "Included rollout, overload and true cost"
+    ],
+    "seconds": 180
+  },
+  {
+    "id": "round-3-66",
+    "round": 3,
+    "project": "systems",
+    "title": "Design: safe desktop actions",
+    "q": "Design an assistant that can move and rename files safely while users and other apps may change them.",
+    "answer": "I would separate proposals from execution, bind approved arguments to observed state, and revalidate immediately before acting. Operations need stable identities, durable intent records, and verified outcomes. Recovery should inspect actual files rather than blindly replaying. Undo must detect changed content and destination collisions, with ambiguity routed to review.",
+    "cue": "Bind permission → revalidate → reconcile",
+    "trap": "Can you eliminate every race by hashing the source?",
+    "reply": "No. A file can change after a hash check. I would use suitable operating-system primitives and narrow the race window, while documenting the remaining guarantees instead of promising global atomicity.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Bind permission → revalidate → reconcile",
+    "evidence": "A design exercise inspired by MFlash. Its supplied report confirms several controls but does not establish comprehensive external-process race protection.",
+    "rubric": [
+      "Separated permission from model confidence",
+      "Handled crash windows and concurrent changes",
+      "Protected newer state during undo"
+    ],
+    "seconds": 180
+  },
+  {
+    "id": "round-3-67",
+    "round": 3,
+    "project": "systems",
+    "title": "Incident: latency and review rates spike",
+    "q": "A model update improves an offline score, but production latency and human review rates double. What do you do?",
+    "answer": "I would stop the rollout or revert to the known-good version while checking error severity and affected traffic. Then I would compare old and new versions on the same production-like samples, including parsing, prompt length, retries, and output behavior. I would treat the offline metric as incomplete and update the release gate to cover the regressions that mattered.",
+    "cue": "Contain → isolate → strengthen release gate",
+    "trap": "What if the model itself is fine and the new parser caused it?",
+    "reply": "I would compare complete versioned pipelines and trace stage-level changes. A model rollback alone is not enough if the regression is in preprocessing.",
+    "label": "Worked example",
+    "hint": "Build your answer around: Contain → isolate → strengthen release gate",
+    "evidence": "Hypothetical incident response. Do not present it as an outage you personally handled.",
+    "rubric": [
+      "Contained impact before extended diagnosis",
+      "Compared versions and stage-level evidence",
+      "Defined a regression test and rollout condition"
+    ],
+    "seconds": 180
+  },
+  {
+    "id": "round-4-68",
+    "round": 4,
+    "project": "behavior",
+    "title": "Pressure: defend your ownership",
+    "q": "You say you owned the workflow end to end. Be specific: what did you personally deliver?",
+    "answer": "At Bank of America, my scope included preparing extraction data, fine-tuning Qwen 3, integrating OCR and APIs, building validation, and delivering the review UI. I also worked directly with clients on the required fields and workflow. I would walk through one input document and show how those components produce a reviewed downstream result.",
+    "cue": "Scope → components → one concrete trace",
+    "trap": "What did the model vendor contribute?",
+    "reply": "Qwen supplied the pretrained foundation model. My work was adapting and integrating it for the extraction workflow; I would not describe that as pretraining the foundation model.",
+    "label": "Confirmed scope · pressure practice",
+    "hint": "Build your answer around: Scope → components → one concrete trace",
+    "evidence": "Based on your supplied ownership details and résumé. Exact infrastructure, training recipe and numerical results should be verified before adding them.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "round-4-69",
+    "round": 4,
+    "project": "behavior",
+    "title": "Pressure: your benchmark has overlap",
+    "q": "Your NoteEchoes templates overlap across train and test. Why should I trust your engineering judgment?",
+    "answer": "That finding limits the generalization claim, and I would state it directly. The saved result still measures regression behavior on those synthetic cases, but it does not establish unfamiliar-request accuracy. The appropriate next step is an independently authored holdout and a matched base-model comparison. I would use those results to decide whether the model is ready for broader use.",
+    "cue": "Acknowledge → scope evidence → improve test",
+    "trap": "Did you know about the overlap when you wrote the résumé?",
+    "reply": "The report surfaced the normalized-template finding. I would clarify when I learned it and describe the result with its scope rather than imply broader accuracy.",
+    "label": "Report-backed reflection",
+    "hint": "Build your answer around: Acknowledge → scope evidence → improve test",
+    "evidence": "Do not invent a historical discovery timeline. If asked when you first knew, answer from your actual recollection.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "round-4-70",
+    "round": 4,
+    "project": "behavior",
+    "title": "Pressure: a real failure story",
+    "q": "Tell me about a failure you personally handled. What changed because of your actions?",
+    "answer": "I would use one real event and state the impact first. Then I would explain the evidence that isolated the cause, my specific corrective action, and how I verified recovery. I would close with the prevention step and its actual result. A credible answer distinguishes what I observed from what I inferred and avoids claiming a fix that was never deployed.",
+    "cue": "Impact → your action → verified result",
+    "trap": "Which failure from your projects can you honestly discuss?",
+    "reply": "The NoteEchoes failed-ingestion retry finding is a concrete code-review issue, but it is not a confirmed incident you experienced or fixed. Use it as a design reflection unless you can supply the actual history.",
+    "label": "Personal story needed · answer structure",
+    "hint": "Build your answer around: Impact → your action → verified result",
+    "evidence": "No historical incident was supplied. Replace this structure with your own event before using it as a past-tense interview answer. A generic invented STAR story would undermine follow-up answers.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "round-4-71",
+    "round": 4,
+    "project": "behavior",
+    "title": "Pressure: disagree with a stakeholder",
+    "q": "A client wants every extracted amount automatically approved. How would you respond?",
+    "answer": "I would align on the business objective, then make the error consequences explicit. I would propose automation for cases that meet evidence-based acceptance criteria and review for ambiguous or high-impact cases. We could measure handling time, critical-field errors, and review volume in a pilot, then expand automation as the evidence supports it.",
+    "cue": "Align → quantify risk → measurable pilot",
+    "trap": "They say review defeats the purpose of automation.",
+    "reply": "I would show total workflow effort and error cost, then target the review policy to the cases where it adds value. The goal is reliable throughput, not simply eliminating every review step.",
+    "label": "Professional scenario answer",
+    "hint": "Build your answer around: Align → quantify risk → measurable pilot",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "round-4-72",
+    "round": 4,
+    "project": "behavior",
+    "title": "Pressure: ship by Friday",
+    "q": "You have two days to deliver extraction for ten document types. How do you prioritize?",
+    "answer": "I would identify the highest-value document types and critical fields, agree on acceptance examples, and ship a narrow, observable workflow with a review fallback. I would make exclusions and failure behavior explicit and reserve time for integration and representative testing. A limited workflow with clear guarantees is easier to expand than a broad workflow whose failures are hidden.",
+    "cue": "Critical scope → acceptance examples → safe rollout",
+    "trap": "Would you skip evaluation to meet the date?",
+    "reply": "I would reduce scope before removing the minimum checks needed to understand quality. A deadline changes the deliverable, not the need to know whether it works.",
+    "label": "Professional scenario answer",
+    "hint": "Build your answer around: Critical scope → acceptance examples → safe rollout",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "round-4-73",
+    "round": 4,
+    "project": "behavior",
+    "title": "Pressure: explain AI to a director",
+    "q": "Explain why the extraction system still needs human review, without technical jargon.",
+    "answer": "The system can do repetitive reading and field entry quickly, but unusual documents can still produce a plausible wrong value. Review focuses people on the cases where that mistake would matter. I would measure whether the combined process saves time while keeping the output dependable, and expand automatic handling as results justify it.",
+    "cue": "Repetitive work → consequential exceptions → measured value",
+    "trap": "Give me the single business metric you would lead with.",
+    "reply": "Human handling time per accepted document, including corrections, paired with critical-field error rate. Speed without a quality measure can hide a worse outcome.",
+    "label": "Professional scenario answer",
+    "hint": "Build your answer around: Repetitive work → consequential exceptions → measured value",
+    "evidence": "This is an interview explanation or proposed approach. It does not establish that you implemented it in a past role.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "round-4-74",
+    "round": 4,
+    "project": "behavior",
+    "title": "Pressure: when you do not know",
+    "q": "I ask for the exact Qwen training settings and you cannot remember. How do you answer professionally?",
+    "answer": "I do not recall the exact configuration, and I would verify the run artifacts before quoting it. I can explain the task, data preparation, evaluation approach, and integration I worked on. If you want to explore design choices, I can also explain how I would select an adapter setup and validate it today.",
+    "cue": "State limit → explain known work → reason forward",
+    "trap": "Does not remembering mean you did not do the work?",
+    "reply": "Exact settings should be recoverable from artifacts. I would support ownership with the pipeline decisions and implementation details I do remember, while acknowledging the specific information I need to check.",
+    "label": "Professional interview response",
+    "hint": "Build your answer around: State limit → explain known work → reason forward",
+    "evidence": "Do not substitute recommended hyperparameters for a historical configuration. Concise acknowledgment is stronger than an invented number.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "round-4-75",
+    "round": 4,
+    "project": "behavior",
+    "title": "Pressure: justify hiring you",
+    "q": "Why should we hire you for an AI engineering role?",
+    "answer": "I bring experience across the full path from data to a usable AI workflow. My background includes Spark pipelines, production document extraction, API and UI integration, and projects in local inference and controlled automation. I can discuss model quality and the surrounding system—how inputs are prepared, results are checked, and failures are handled. That is the combination I would bring to this role.",
+    "cue": "Data foundation → AI delivery → operational judgment",
+    "trap": "What do you still need to strengthen?",
+    "reply": "I would strengthen independent model evaluation and deepen production measurements for my personal projects. I can identify the evidence gaps and describe a concrete plan to close them.",
+    "label": "Résumé-backed positioning",
+    "hint": "Build your answer around: Data foundation → AI delivery → operational judgment",
+    "evidence": "Keep the opening aligned with the actual job. Avoid invented team leadership, revenue impact, or adoption metrics.",
+    "rubric": [
+      "Answered the actual question directly",
+      "Explained the mechanism or tradeoff",
+      "Handled the follow-up with a concrete check"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-1",
+    "round": 5,
+    "project": "mcp",
+    "title": "MCP: explain the whole path",
+    "q": "Explain MCP and trace a flight-status question from the user to the airline API.",
+    "answer": "MCP standardizes how an AI application discovers and uses external capabilities. The host manages clients connected to servers; servers can expose tools, resources, and prompts. In this example, the application chooses a flight-status tool, validates the request, invokes the server, and returns the API result to the model. The application controls orchestration and permissions.",
+    "cue": "Host → client → server → API",
+    "trap": "Is MCP the same as function calling?",
+    "reply": "No. Function calling is a model-facing interaction pattern. MCP standardizes the integration interface; an application can expose discovered MCP tools through a model’s tool-calling interface.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Host → client → server → API",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90,
+    "source": {
+      "title": "MCP architecture",
+      "url": "https://modelcontextprotocol.io/docs/learn/architecture"
+    }
+  },
+  {
+    "id": "friday-2",
+    "round": 5,
+    "project": "mcp",
+    "title": "MCP: tools, resources, prompts",
+    "q": "How would you expose an airline system through MCP?",
+    "answer": "I would expose get_flight_status as a tool, a policy document as a resource, and a reusable disruption-summary template as a prompt. Tools provide operations, resources provide contextual data, and prompts provide reusable message templates. I would keep each capability narrow and document its inputs, outputs, and failures.",
+    "cue": "Operation → context → template",
+    "trap": "Does a read-only tool need authorization?",
+    "reply": "Yes. Reading a reservation or passenger record exposes private information. I would authorize access to the specific object at execution time.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Operation → context → template",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-3",
+    "round": 5,
+    "project": "mcp",
+    "title": "MCP: transports and compatibility",
+    "q": "What changes between a local MCP server and a remote one?",
+    "answer": "Local integrations commonly use stdio; remote integrations use Streamable HTTP. For a remote service I would plan identity, TLS, deadlines, request limits, and observability. I would pin the SDK and supported protocol versions and test capability discovery and errors with the target client rather than assume compatibility.",
+    "cue": "Local vs remote → identity → contract tests",
+    "trap": "Would you memorize one handshake for every deployment?",
+    "reply": "No. Protocol versions evolve. I would explain capability discovery and verify the exact lifecycle against the SDK and specification version used by that deployment.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Local vs remote → identity → contract tests",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-4",
+    "round": 5,
+    "project": "mcp",
+    "title": "MCP: secure a booking tool",
+    "q": "Design the security boundary for an MCP tool that changes reservations.",
+    "answer": "I would derive identity from a validated credential, enforce access to the reservation, validate the requested itinerary, and bind approval to the exact change and price. The server would recheck current state before committing. I would use least-privilege credentials and audit the decision without logging secrets or passenger details.",
+    "cue": "Identity → object access → exact approval → recheck",
+    "trap": "Can the server forward any incoming bearer token downstream?",
+    "reply": "No. Tokens must be intended for their recipient. I would use the appropriate downstream authorization flow and validate token audience and scope.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Identity → object access → exact approval → recheck",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90,
+    "source": {
+      "title": "MCP security guidance",
+      "url": "https://modelcontextprotocol.io/specification/latest/basic/security_best_practices"
+    }
+  },
+  {
+    "id": "friday-5",
+    "round": 5,
+    "project": "mcp",
+    "title": "MCP: timeout after a mutation",
+    "q": "A booking tool times out. The model asks to retry. What happens?",
+    "answer": "A timeout leaves the outcome uncertain. I would check the operation by its durable idempotency key or provider reference before issuing another mutation. The same key must represent the same request; a changed payload is a conflict. If the provider offers neither idempotency nor reliable status lookup, I would reconcile or escalate rather than promise duplicate-free retries.",
+    "cue": "Unknown outcome → lookup → reconcile",
+    "trap": "Does an in-memory set solve this?",
+    "reply": "No. It loses state on restart and does not coordinate replicas. The durable operation record and downstream behavior must support the guarantee.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Unknown outcome → lookup → reconcile",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-6",
+    "round": 5,
+    "project": "mcp",
+    "title": "MCP: test the server",
+    "q": "What tests would you write for a new MCP server?",
+    "answer": "I would test discovery and schemas, valid and malformed calls, authorization failures, result formats, and timeouts. I would add cross-user access attempts, replay of mutations, stale approvals, and downstream failures. A fake backend makes failure tests deterministic; a small integration suite verifies compatibility with the actual client and pinned SDK.",
+    "cue": "Contract → access → failures → client",
+    "trap": "A tool schema validates. Are you done?",
+    "reply": "No. Schema validity says little about business correctness. A valid reservation ID can still belong to a different user, and a valid seat count can exceed inventory.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Contract → access → failures → client",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-7",
+    "round": 5,
+    "project": "agents",
+    "title": "Agents: choose a workflow",
+    "q": "When should you use an agent, a graph, or ordinary application code?",
+    "answer": "I would use ordinary code for deterministic business rules and a bounded workflow when steps are known. An agent is useful when the next action depends on unstructured information. For this role I would favor explicit state transitions, typed tool results, time and cost limits, and an escalation path. I would add multiple agents only for a measured benefit.",
+    "cue": "Task uncertainty → bounded state → measurable benefit",
+    "trap": "Why not let the model loop until it succeeds?",
+    "reply": "Repeated calls can accumulate cost and repeat harmful actions. I would stop on a terminal state, budget exhaustion, repeated failure, or an action needing human review.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Task uncertainty → bounded state → measurable benefit",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-8",
+    "round": 5,
+    "project": "agents",
+    "title": "Agents: checkpoint and approval",
+    "q": "How would you resume an interrupted LangGraph workflow safely?",
+    "answer": "I would persist graph state with a durable checkpointer and associate it with the correct thread and user. An approval records the exact proposed action and its version. On resumption I would revalidate that action against current state. External effects need idempotency because workflow recovery can replay work.",
+    "cue": "Persist → bind approval → revalidate → idempotency",
+    "trap": "Is an in-memory checkpointer production recovery?",
+    "reply": "It can support a local demonstration but loses state on process restart. A production recovery requirement needs persistent storage and tested restart behavior.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Persist → bind approval → revalidate → idempotency",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90,
+    "source": {
+      "title": "LangGraph persistence",
+      "url": "https://docs.langchain.com/oss/python/langgraph/persistence"
+    }
+  },
+  {
+    "id": "friday-9",
+    "round": 5,
+    "project": "agents",
+    "title": "Frameworks: defend your choice",
+    "q": "Compare LangGraph, Semantic Kernel, Copilot Studio, and direct tool calling.",
+    "answer": "I would compare required control over state, deployment, integrations, testing, and team skills. Direct tool calling suits a small orchestration loop; a graph runtime suits explicit branching and recovery. For an existing Microsoft environment I would evaluate Semantic Kernel or Copilot Studio against the same requirements. I would demonstrate depth in the framework I have actually used and prototype missing capabilities before committing.",
+    "cue": "Requirements → strongest known tool → validate gaps",
+    "trap": "Have you used all of them in production?",
+    "reply": "I would answer honestly. Familiarity with their purpose is different from implementation experience; I would connect the question to a framework I can explain from real work.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Requirements → strongest known tool → validate gaps",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-10",
+    "round": 5,
+    "project": "prompts",
+    "title": "Prompt engineering: run an experiment",
+    "q": "How do you improve a prompt systematically?",
+    "answer": "I would define the task, output schema, allowed sources, and failure behavior, then build a representative evaluation set. I would add diverse few-shot examples for common ambiguities, compare one change at a time, and version prompts with model and retrieval settings. I would select using task quality, cost, latency, and important failure slices.",
+    "cue": "Task contract → examples → controlled evaluation",
+    "trap": "Should you always request detailed chain-of-thought?",
+    "reply": "No. I would ask for the required answer and concise evidence or a verifiable explanation. For multi-step tasks I can structure intermediate outputs and checks without relying on hidden reasoning as an audit trail.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Task contract → examples → controlled evaluation",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-11",
+    "round": 5,
+    "project": "prompts",
+    "title": "Structured output: valid but false",
+    "q": "The model returns schema-valid JSON. How do you know it is correct?",
+    "answer": "I would separately validate syntax, types, business invariants, and evidence. An extracted amount should have a source location and pass currency and reconciliation checks. Missing evidence should trigger an explicit missing value or review. I would measure field correctness on labeled data; schema validation alone cannot detect a plausible wrong amount.",
+    "cue": "Schema → invariants → evidence → evaluation",
+    "trap": "Will temperature zero eliminate hallucinations?",
+    "reply": "No. It does not establish factual correctness or complete determinism across every serving setup. Retrieval, validation, and evaluation still matter.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Schema → invariants → evidence → evaluation",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-12",
+    "round": 5,
+    "project": "enterprise",
+    "title": "DDD: model an airline domain",
+    "q": "What does domain-driven design mean in this application?",
+    "answer": "I would define bounded contexts such as reservations, flight operations, and customer communication. A reservation aggregate owns its invariants, such as allowed state transitions. Domain services express business rules; infrastructure adapters connect databases and airline APIs. The agent requests an operation through an application service rather than directly editing domain state.",
+    "cue": "Bounded contexts → invariants → application service",
+    "trap": "Is every database table a microservice?",
+    "reply": "No. Service boundaries follow domain ownership and operational needs. Splitting tables into services can create distributed transactions without improving the design.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Bounded contexts → invariants → application service",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-13",
+    "round": 5,
+    "project": "enterprise",
+    "title": "OOP: make the model replaceable",
+    "q": "How would you apply SOLID principles to an AI service?",
+    "answer": "I would separate orchestration, retrieval, model access, and validation. Small interfaces let the application depend on capabilities rather than one vendor client. Dependency injection makes tests use deterministic fakes. I would avoid a large base class with unrelated responsibilities and prefer composition where behavior varies independently.",
+    "cue": "Small interfaces → composition → test doubles",
+    "trap": "How does this translate to Java?",
+    "reply": "The same separation maps to interfaces and constructor injection. I would keep domain validation independent of the controller and provider SDK, then use unit and integration tests around those boundaries.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Small interfaces → composition → test doubles",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-14",
+    "round": 5,
+    "project": "enterprise",
+    "title": "TDD: test an uncertain model",
+    "q": "How do you use test-driven development with an LLM?",
+    "answer": "I would first write failing deterministic tests for the application contract: input validation, access checks, tool routing, and failure handling. I would implement the smallest behavior and refactor. For model quality I would maintain a separate versioned evaluation suite with acceptance thresholds and representative slices. Unit tests use fake model responses; evaluations measure behavior on real model calls.",
+    "cue": "Red → green → refactor; contract tests + evals",
+    "trap": "Would you assert one exact natural-language paragraph?",
+    "reply": "Usually no. I would test required facts, supported evidence, structured fields, and unacceptable behavior. Exact equality fits deterministic structured targets when the task requires it.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Red → green → refactor; contract tests + evals",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-15",
+    "round": 5,
+    "project": "enterprise",
+    "title": "REST: long-running AI jobs",
+    "q": "Design a REST API for document extraction.",
+    "answer": "I would accept an authorized request, validate file limits, and create a durable job using an idempotency key. A 202 response returns a job reference; status and result endpoints authorize access to that job. Workers process bounded jobs, persist outcomes, and support retries and cancellation. Errors distinguish invalid input, forbidden access, rate limits, and temporary failures.",
+    "cue": "Validate → durable job → worker → authorized result",
+    "trap": "Can two requests use the same key with different files?",
+    "reply": "I would reject that conflict. The idempotency record should be scoped to the caller and bound to a canonical request fingerprint.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Validate → durable job → worker → authorized result",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-16",
+    "round": 5,
+    "project": "production",
+    "title": "Cloud: deploy the service",
+    "q": "Describe one concrete cloud deployment for this system.",
+    "answer": "As a proposed Azure design, I would run the API and workers in managed containers, use a queue for long jobs, object storage for documents, a database for job state, and a managed identity and secret store for credentials. I would keep resource access private where required, scale workers to measured bottlenecks, and instrument the full request path. Equivalent AWS or GCP services can implement the same pattern.",
+    "cue": "API → queue → workers → state → identity",
+    "trap": "Is this what you deployed previously?",
+    "reply": "Only if it matches my actual work. Otherwise I would label it as my design and explain the deployment environment I really used.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: API → queue → workers → state → identity",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-17",
+    "round": 5,
+    "project": "production",
+    "title": "CI/CD: release an AI change",
+    "q": "What belongs in the pipeline for changing a model or prompt?",
+    "answer": "I would run unit and contract tests, dependency and secret checks, and a versioned evaluation suite. The release records the application, model, prompt, index, and configuration versions. I would deploy gradually with health and quality checks, compare against the baseline, and retain a tested rollback path. Schema and index changes need compatibility planning.",
+    "cue": "Tests → eval gate → versions → gradual rollout",
+    "trap": "Does rolling back the model restore everything?",
+    "reply": "No. Prompt, retrieval, configuration, and data migrations may also have changed. I would treat the release as a versioned bundle and check compatibility before rollback.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Tests → eval gate → versions → gradual rollout",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-18",
+    "round": 5,
+    "project": "production",
+    "title": "Observability: diagnose a regression",
+    "q": "Answer quality fell and latency doubled. How do you investigate?",
+    "answer": "I would segment by release, tenant, language, document type, and tool path, then inspect redacted traces. I would separate queue time, retrieval, reranking, model time, and tool latency. I would compare retrieval recall, schema failures, unsupported claims, token use, and retry counts with the baseline. The first mitigation could be rollback, reduced load, or disabling a failing path.",
+    "cue": "Segment → trace stages → compare → mitigate",
+    "trap": "Can you just log every prompt and response?",
+    "reply": "That can expose sensitive data. I would use controlled sampling, redaction, access restrictions, and retention rules while preserving identifiers and metrics needed for diagnosis.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Segment → trace stages → compare → mitigate",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-19",
+    "round": 5,
+    "project": "production",
+    "title": "Cost: estimate before optimizing",
+    "q": "Estimate monthly inference cost and choose an optimization.",
+    "answer": "I would multiply monthly calls by average input and output tokens and the applicable token rates, then add retrieval, hosting, and tool costs. For a hypothetical 100,000 calls with 2,000 input and 400 output tokens, at fictional rates of $1 and $4 per million tokens, inference is $360. I would first measure wasted context and repeated work, then compare routing, caching, or shorter outputs against quality.",
+    "cue": "Volume × tokens × rates → measure waste",
+    "trap": "Does caching always reduce cost safely?",
+    "reply": "No. The key needs the relevant user access scope and model, prompt, and content versions. Sensitive or rapidly changing answers may be unsuitable for caching.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Volume × tokens × rates → measure waste",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-20",
+    "round": 5,
+    "project": "production",
+    "title": "Governance: turn policy into controls",
+    "q": "What would responsible AI governance look like here?",
+    "answer": "I would classify use-case risk and data sensitivity, assign owners, define acceptable behavior, and document model and data provenance. Controls include restricted data access, retention, evaluations of harmful or unequal outcomes, human review for consequential actions, and an incident process. Release gates and audit records make the policy enforceable in daily engineering.",
+    "cue": "Risk → owner → control → evidence",
+    "trap": "Can a responsible-AI document alone prevent harm?",
+    "reply": "No. I would connect each requirement to an implemented control, a test, an owner, and a response when the control fails.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Risk → owner → control → evidence",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-21",
+    "round": 5,
+    "project": "production",
+    "title": "Evaluation: calibrate the judge",
+    "q": "How do you make LLM-as-a-judge useful for release decisions?",
+    "answer": "I would define a specific rubric, calibrate it on human-labeled cases, and measure agreement and failure patterns. I would blind system identities and randomize answer order where relevant. The judge should score dimensions such as correctness and evidence support separately, with deterministic checks for fields and policy rules. I would keep model and judge versions recorded.",
+    "cue": "Rubric → human calibration → failure slices",
+    "trap": "The judge prefers longer answers. What changes?",
+    "reply": "I would inspect length bias, refine the rubric, compare paired examples, and validate again against human judgments. A convenient score is not automatically a valid measure of task success.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Rubric → human calibration → failure slices",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-22",
+    "round": 5,
+    "project": "production",
+    "title": "A/B testing: measure business value",
+    "q": "How would you evaluate a new AI assistant online?",
+    "answer": "I would choose a primary outcome such as successfully resolved cases and guardrails such as incorrect actions, complaints, latency, and cost. I would randomize at a unit that reduces contamination, often user or account, estimate sample needs, and predefine the analysis period. I would report uncertainty and segment results; a before-and-after comparison alone can confuse product effects with traffic changes.",
+    "cue": "Outcome → guardrails → randomize → uncertainty",
+    "trap": "What if clicks rise but resolution falls?",
+    "reply": "The primary outcome and guardrails decide the result. More clicks can indicate friction rather than value; I would investigate before expanding rollout.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Outcome → guardrails → randomize → uncertainty",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-23",
+    "round": 5,
+    "project": "production",
+    "title": "Drift: identify what changed",
+    "q": "What does drift mean for an LLM application?",
+    "answer": "I would distinguish changes in user inputs, source knowledge, retrieved results, and output quality. I would monitor representative data slices and regularly label recent cases. A changed embedding distribution is a signal to investigate, not proof of business failure. The response may be reindexing, prompt changes, updated evaluations, or a different model depending on the cause.",
+    "cue": "Input → knowledge → retrieval → outcome",
+    "trap": "How do you know without ground truth?",
+    "reply": "Operational proxies can flag issues, but they do not establish correctness. I would maintain a sampled human-review process and delay-dependent outcome labels where available.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Input → knowledge → retrieval → outcome",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-24",
+    "round": 5,
+    "project": "enterprise",
+    "title": "Delivery: clarify and estimate",
+    "q": "A leader asks for an AI assistant in two weeks. What do you do?",
+    "answer": "I would identify users, workflow, data access, success criteria, and the consequences of a wrong answer. I would scope a thin end-to-end slice with explicit acceptance tests, list dependencies and uncertainties, and estimate a range after a short technical spike. In Agile delivery I would demonstrate working increments, collect feedback, and update risks and priorities with the product owner.",
+    "cue": "Requirements → acceptance → spike → increments",
+    "trap": "What would you put in the project specification?",
+    "reply": "Scope, inputs and outputs, domain rules, interfaces, security and reliability targets, evaluation criteria, dependencies, milestones, and assumptions. A traceable backlog and simple project spreadsheet can make ownership and progress clear.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Requirements → acceptance → spike → increments",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-25",
+    "round": 5,
+    "project": "systems",
+    "title": "Airline design: disrupted travel assistant",
+    "q": "Design an assistant that helps a passenger after a cancelled flight.",
+    "answer": "I would clarify whether the assistant only explains options or can rebook. Policy answers use versioned retrieval; flight status and available seats come from live tools. A bounded workflow authenticates the passenger, reads the reservation, retrieves eligible options, obtains approval for the exact itinerary and price, and commits through the reservation service with idempotency. I would recheck availability before commit, notify only after confirmation, and provide an agent handoff when state is uncertain.",
+    "cue": "Clarify → live tools + policy RAG → approval → safe commit",
+    "trap": "Inventory changes after the user approves. What happens?",
+    "reply": "I would stop that attempt, fetch current options, and request approval for the new offer. I would not silently substitute another flight or price.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Clarify → live tools + policy RAG → approval → safe commit",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-26",
+    "round": 5,
+    "project": "fundamentals",
+    "title": "Transformers: explain without hand-waving",
+    "q": "Explain a decoder transformer and the difference between training and inference.",
+    "answer": "Tokens become embeddings with position information. Causal self-attention combines information from earlier tokens, and feed-forward layers transform those representations using residual connections and normalization. Training adjusts weights using a loss such as next-token prediction; inference applies learned weights to generate tokens. Context is temporary input, while fine-tuning changes parameters.",
+    "cue": "Tokens → attention → layers → next-token distribution",
+    "trap": "Does attention mean the model understands or remembers everything?",
+    "reply": "No. Attention is a computation over representations. Limited context, learned associations, and generation errors mean I still need external evidence and task-specific evaluation.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Tokens → attention → layers → next-token distribution",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "friday-27",
+    "round": 5,
+    "project": "coding",
+    "title": "Python: sliding-window rate limiter",
+    "q": "Implement allow(user) for at most N requests per rolling W seconds. Explain boundaries, concurrency, and scaling.",
+    "answer": "I would keep a deque of accepted timestamps per user, remove expired entries, and accept only below the limit. A monotonic clock avoids wall-clock jumps, and a lock protects the check-and-append operation within one process. Each timestamp is appended and removed once, giving amortized O(1) work per request. Production needs idle-key cleanup and a shared atomic implementation across replicas.",
+    "cue": "Deque → expire → atomic check → append",
+    "trap": "Can this enforce a global limit across four workers?",
+    "reply": "No. Their memory is separate. I would move the atomic decision to a shared store and explicitly define behavior when that store is unavailable.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Deque → expire → atomic check → append",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 300,
+    "code": "from collections import deque\nfrom threading import Lock\nfrom time import monotonic\n\nclass SlidingWindowLimiter:\n    \"\"\"Single-process limiter. Window is (now-window, now].\"\"\"\n    def __init__(self, limit, window, clock=monotonic):\n        if limit <= 0 or window <= 0:\n            raise ValueError(\"limit and window must be positive\")\n        self.limit, self.window, self.clock = limit, window, clock\n        self.events = {}\n        self.lock = Lock()\n\n    def allow(self, user):\n        with self.lock:\n            now = self.clock()\n            queue = self.events.setdefault(user, deque())\n            while queue and queue[0] <= now - self.window:\n                queue.popleft()\n            if len(queue) >= self.limit:\n                return False\n            queue.append(now)\n            return True\n"
+  },
+  {
+    "id": "friday-28",
+    "round": 5,
+    "project": "coding",
+    "title": "Python: combine search results",
+    "q": "Merge ranked lexical and vector search results using reciprocal rank fusion. Handle duplicates and deterministic ties.",
+    "answer": "I would accumulate 1 divided by k plus rank for each document across lists. A per-list set prevents a repeated document from gaining extra votes in that list. I would sort by descending fused score and then document ID for deterministic ties. With M total entries and U unique documents, work is O(M + U log U), and space is O(U). All candidate lists must already respect authorization.",
+    "cue": "Ranks → per-list dedup → score → deterministic order",
+    "trap": "Does fusion make lexical and vector scores comparable?",
+    "reply": "It avoids comparing their raw score scales by using ranks. The rank constant and retrieval depth still need evaluation on representative queries.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Ranks → per-list dedup → score → deterministic order",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 300,
+    "code": "def reciprocal_rank_fusion(rankings, k=60):\n    \"\"\"Ranked document-ID lists; equal scores break by document ID.\"\"\"\n    if k <= 0:\n        raise ValueError(\"k must be positive\")\n    scores = {}\n    for ranking in rankings:\n        seen = set()\n        for rank, doc_id in enumerate(ranking, start=1):\n            if doc_id in seen:\n                continue\n            seen.add(doc_id)\n            scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)\n    return sorted(scores, key=lambda doc_id: (-scores[doc_id], doc_id))\n"
+  },
+  {
+    "id": "friday-29",
+    "round": 5,
+    "project": "coding",
+    "title": "Python: evaluate extraction outputs",
+    "q": "Compute field accuracy and whole-document exact match. Distinguish a missing key from an explicit null; report extra documents.",
+    "answer": "I would define comparison rules before coding. This implementation checks exact string-or-null equality across required fields and penalizes extra fields in whole-document exact match. A sentinel separates a missing prediction from an explicit null. It reports unexpected documents separately and returns undefined rates as None for empty denominators. Runtime is linear in the fields and document IDs inspected.",
+    "cue": "Metric contract → sentinel → denominators → extras",
+    "trap": "Should currency strings be normalized first?",
+    "reply": "Only under an agreed business rule. I would parse currency and units explicitly, preserve the original evidence, and test whether normalization can incorrectly equate different amounts.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Metric contract → sentinel → denominators → extras",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 300,
+    "code": "def extraction_metrics(expected, predicted):\n    \"\"\"Mappings: document ID -> {field: string or None}.\n    Equality is exact; required fields are the keys in expected.\n    Missing predictions do not match an explicit None.\n    \"\"\"\n    missing = object()\n    total = correct = exact = 0\n    for doc_id, truth in expected.items():\n        guess = predicted.get(doc_id, {})\n        matches = [guess.get(field, missing) == value\n                   for field, value in truth.items()]\n        total += len(matches)\n        correct += sum(matches)\n        exact += (doc_id in predicted and all(matches)\n                  and set(guess) == set(truth))\n    return {\n        \"field_accuracy\": correct / total if total else None,\n        \"document_exact_match\": exact / len(expected) if expected else None,\n        \"unexpected_documents\": len(set(predicted) - set(expected)),\n    }\n"
+  },
+  {
+    "id": "friday-30",
+    "round": 5,
+    "project": "behavior",
+    "title": "Pressure: give your 90-second project story",
+    "q": "Explain your most relevant AI project in 90 seconds, then defend two decisions.",
+    "answer": "I would structure my real example as: business problem and users; my exact ownership; data and model flow; one difficult engineering decision; evaluation and deployment; one limitation and next improvement. For the tax-extraction work, I can discuss digital PDFs and spreadsheets and extracting workflow IDs, dates, vendor, and amount. I must fill in only training settings, deployment facts, and outcomes I can substantiate.",
+    "cue": "Problem → ownership → architecture → evidence → limitation",
+    "trap": "What was the baseline behind the claimed savings?",
+    "reply": "I would name the baseline workflow, sample, measurement period, and calculation. If the percentage was an estimate rather than a controlled result, I would say so and explain what evidence I do have.",
+    "label": "Friday interview · recommended approach",
+    "hint": "Structure your answer: Problem → ownership → architecture → evidence → limitation",
+    "evidence": "Role-specific practice based on the supplied job description. This is a proposed design or explanation, not a claim about your past experience.",
+    "rubric": [
+      "Answered directly and explained the mechanism",
+      "Named a concrete failure case and a test",
+      "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  }
+];
 const repoPrompt="# Collect project evidence for my interview dashboard\n\nOpen a Codex chat in the relevant project folder and paste the prompt below. Run it once for NoteEchoes, once for Agentic RAG Codebase Assistant, and once for MFlash. Bring each resulting report back to my interview-preparation chat.\n\n## Copy this prompt\n\nInspect this repository in read-only mode and prepare an evidence-based technical interview briefing. Follow repository instructions. Do not edit source, install dependencies, run training, invoke paid services, or expose secrets, personal data, private document content, or credentials. Existing tests may be run only if safe and lightweight; label anything not run as unverified.\n\nFirst identify which project this is. Separate all findings into: verified in code, documented but not verified, reasonable inference, and unknown. Do not invent metrics, infrastructure, production usage, design intent, or my personal ownership. Cite repository-relative files and line numbers for important claims. Distinguish implemented code from dead code, experiments, TODOs, and documentation promises.\n\nReturn a Markdown report in your reply with:\n1. A plain-English project summary and user problem.\n2. The architecture and an end-to-end trace of one request, including inputs, transformations, storage, model/tool calls, and outputs.\n3. Exact models, versions, dependencies, execution locations, and deployment evidence. Separate model training from inference; distinguish local and remote processing.\n4. Data preparation: sources, cleaning, labels, splits, leakage controls, dataset size, and privacy handling. Mark missing evidence explicitly.\n5. Training configuration if present: model size, quantization, LoRA/QLoRA settings, target modules, rank, alpha, dropout, learning rate, batch size, epochs, hardware, loss and checkpoint choice. Report actual evidence only.\n6. Retrieval if present: parsing, chunking, embedding, indexing, filters, ranking, reranking, citations, updating/deleting stale data, and access controls.\n7. Evaluation: metric definitions, denominators, test-set origin, baseline comparisons, actual results, failure slices, and whether reported numbers can be reproduced. Do not treat schema validity as semantic accuracy.\n8. Reliability: retries, idempotency, persistence, cancellation, recovery, authorization, logging, and failure behavior.\n9. Three concrete failure scenarios grounded in code, and what the implementation does for each. Do not invent historical incidents.\n10. Main engineering tradeoffs. Separate documented choices from recommendations you would make now.\n11. Ten difficult interviewer questions with concise answers grounded in the repository. Label recommendations as hypothetical; do not present them as features I built.\n12. A 60\u201390 second project explanation containing only substantiated facts, plus five questions I must answer about personal ownership, actual usage, and undocumented decisions.\n13. A compact fact table: claim | evidence | confidence | remaining question.\n\nProject-specific focus:\n- NoteEchoes: Qwen3 model/runtime location; QLoRA training; what \u201c96.3% action-field exact match\u201d means; the 1,080 synthetic evaluation cases; train/test isolation; multilingual behavior; OCR; knowledge graph; SQLite persistence and recovery; TestFlight evidence; local-first versus remote operations.\n- Agentic RAG Codebase Assistant: actual LangGraph states/edges and agent roles; Claude calls; Pinecone indexing; asynchronous retrieval; stopping conditions and maximum retries for self-correcting search; Ragas configuration and real evaluation results; security and stale code handling.\n- MFlash: 74 action templates; classifier versus MPNet dual encoder responsibilities; contrastive objective and hard-negative construction; observation-bound arguments; typed adapters; authorization; cancellation; SHA-256 checks; journaling; idempotent retries; stale-state rejection; collision-safe undo; crash windows between filesystem and database writes.\n\nKeep the report useful for an interview, not a file-by-file inventory. Finish with the most important unknowns. If the repository is missing training or evaluation artifacts, say so rather than guessing.\n";
