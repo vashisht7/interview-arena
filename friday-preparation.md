@@ -515,3 +515,7 @@ def extraction_metrics(expected, predicted):
 ## Updated bank project: Orchestra
 
 The bank project uses Orchestra, an internal tool for tax-document field extraction. It does not use Qwen3. The underlying model and historical tuning method are not confirmed. For task adaptation, evaluate supervised fine-tuning on verified document-to-field pairs if Orchestra supports it; LoRA or QLoRA are possible implementation choices only for compatible accessible models. Round 1 includes the updated story and three additional lessons on training data, evaluation, and method selection.
+
+## Beginner learning format
+
+Every website lesson now starts with a plain-English explanation, a small example, and steps. Expand “Words explained” for definitions, then read the professional answer and follow-up. Use the updated [complete study guide](interview-spoken-answers.md) for the same beginner explanations offline. Treat timed practice as optional later work.

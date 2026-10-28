@@ -20,7 +20,11 @@ function renderFilters(){const available=[...new Set(cards.filter(c=>c.round===a
 function render(){const c=cards[current];if(!c)return;
  $('#questionTitle').textContent=c.title;$('#questionText').textContent=c.title==='Tell me about yourself'?'How can you introduce your experience clearly?':c.q;$('#questionTag').textContent=projects[c.project].toUpperCase();$('#counter').textContent=`${pool().indexOf(current)+1} / ${pool().length}`;
  $('#answerLabel').textContent=c.label;$('#modelAnswer').textContent=c.answer;$('#memoryCue').textContent=c.cue;$('#followup').textContent=c.trap;$('#followupAnswer').textContent=c.reply;$('#evidenceNote').textContent=c.evidence;
- $('#answerBox').hidden=false;$('#solutionBlock').hidden=!c.code;$('#solutionCode').textContent=c.code||'';$('#speakLabel').textContent=c.code?'SOLUTION EXPLAINED':'ANSWER · READ AND UNDERSTAND';
+ $('#plainExplanation').textContent=c.learn.plain;$('#simpleExample').textContent=c.learn.example;
+ $('#learningSteps').replaceChildren();for(const step of c.learn.steps){const li=document.createElement('li');li.textContent=step;$('#learningSteps').append(li)}
+ $('#termDefinitions').replaceChildren();for(const item of c.learn.terms){const dt=document.createElement('dt');dt.textContent=item.term;const dd=document.createElement('dd');dd.textContent=item.meaning;$('#termDefinitions').append(dt,dd)}
+ $('#termCount').textContent='· '+c.learn.terms.length+' terms';$('.terms-panel').open=false;
+ $('#answerBox').hidden=false;$('#solutionBlock').hidden=!c.code;$('#solutionCode').textContent=c.code||'';$('#speakLabel').textContent=c.code?'2 · PROFESSIONAL EXPLANATION OF THE SOLUTION':'2 · HOW TO ANSWER PROFESSIONALLY';
  $('#sourceLink').hidden=!c.source;if(c.source){$('#sourceLink').href=c.source.url;$('#sourceLink').textContent=c.source.title+' ↗'}
  document.querySelectorAll('[data-round]').forEach(b=>{const selected=Number(b.dataset.round)===activeRound;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected))});
  $('#chapterStat').textContent=rounds[activeRound].subtitle;$('#chapterNumber').textContent=String(activeRound).padStart(2,'0');$('#roundHeading').textContent=rounds[activeRound].name;$('#roundDescription').textContent=rounds[activeRound].description;
@@ -46,6 +50,6 @@ $('#export').onclick=()=>{let t='# Interview Arena notes\n';for(const [id,n]of O
 function renderProgress(){
  $('#progressList').replaceChildren();for(let r=1;r<=5;r++){const heading=document.createElement('h3');heading.textContent=`Round ${r} · ${rounds[r].subtitle}`;$('#progressList').append(heading);cards.forEach((c,i)=>{if(c.round!==r)return;const row=document.createElement('div');row.className='progress-row';const title=document.createElement('strong');title.textContent=c.title;const b=document.createElement('button');b.className='ghost';b.textContent='Read answer →';b.onclick=()=>{activeRound=c.round;filter='all';current=i;setView('arena');render();$('#questionTitle').scrollIntoView({block:'start'})};row.append(title,b);$('#progressList').append(row)})}
 }
-$('#introCount').textContent=`${cards.length} explained answers. Five learning rounds. Start at your own pace.`;
+$('#introCount').textContent=`${cards.length} lessons explained from the basics. Examples first, professional answers next.`;
 $('#xp').textContent=cards.length;$('#rank').textContent='Always visible';$('#doneStat').textContent=cards.length;
 chooseRound(location.hash==='#friday'?5:1);

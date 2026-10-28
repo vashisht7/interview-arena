@@ -13,3 +13,5 @@ Website: https://vashisht7.github.io/interview-arena/
 GitHub Pages serves the main branch root. Local preview: python3 -m http.server 8465.
 
 Bank project correction: Orchestra is the internal tax-document extraction tool. SFT and adapter training are proposed approaches subject to its capabilities; Qwen references belong to the separate NoteEchoes project.
+
+Every lesson now teaches the concept in plain English, gives a concrete example and steps, and defines relevant terms before the professional answer. The downloadable study guide contains the same material.
