@@ -503,7 +503,7 @@ def extraction_metrics(expected, predicted):
 
 **Question:** Explain your most relevant AI project in 90 seconds, then defend two decisions.
 
-**Professional opening:** I would structure my real example as: business problem and users; my exact ownership; data and model flow; one difficult engineering decision; evaluation and deployment; one limitation and next improvement. For the tax-extraction work, I can discuss digital PDFs and spreadsheets and extracting workflow IDs, dates, vendor, and amount. I must fill in only training settings, deployment facts, and outcomes I can substantiate.
+**Professional opening:** I would structure my real example as: business problem and users; my exact ownership; data and model flow; one difficult engineering decision; evaluation and deployment; one limitation and next improvement. For the tax-extraction work using Orchestra, the bank’s internal tool, I can discuss digital PDFs and spreadsheets and extracting workflow IDs, dates, vendor, and amount. I must fill in only training settings, deployment facts, and outcomes I can substantiate.
 
 **Memory cue:** Problem → ownership → architecture → evidence → limitation
 
@@ -511,3 +511,7 @@ def extraction_metrics(expected, predicted):
 
 **Reply:** I would name the baseline workflow, sample, measurement period, and calculation. If the percentage was an estimate rather than a controlled result, I would say so and explain what evidence I do have.
 
+
+## Updated bank project: Orchestra
+
+The bank project uses Orchestra, an internal tool for tax-document field extraction. It does not use Qwen3. The underlying model and historical tuning method are not confirmed. For task adaptation, evaluate supervised fine-tuning on verified document-to-field pairs if Orchestra supports it; LoRA or QLoRA are possible implementation choices only for compatible accessible models. Round 1 includes the updated story and three additional lessons on training data, evaluation, and method selection.

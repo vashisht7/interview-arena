@@ -3,8 +3,8 @@ const cards=[
     "project": "bofa",
     "title": "Explain your Bank of America work",
     "q": "Walk me through the tax-document extraction system you built.",
-    "label": "Confirmed story",
-    "answer": "I built a Qwen 3 extraction workflow for tax-department documents at Bank of America. It handled digital PDFs and spreadsheets and extracted workflow IDs, dates, vendors, and amounts into validated JSON. I owned the work end to end: data preparation, fine-tuning, OCR integration, evaluation, APIs, and the review UI. My focus was getting usable data into downstream workflows, with review where needed.",
+    "label": "Updated experience · Orchestra",
+    "answer": "At Bank of America, I work on a tax-document field-extraction workflow using Orchestra, the bank’s internal tool. The workflow processes tax-related documents and extracts required fields such as workflow IDs, dates, vendor names, and amounts into a structured result for validation and downstream use. My work spans data preparation, extraction, validation, APIs, and the review UI. Orchestra is the internal platform; I would verify its underlying model and supported adaptation methods before naming a specific training technique.",
     "hint": "Lead with the business problem, then inputs → model → validation → delivery, and end with your ownership.",
     "trap": "Why use OCR if the inputs were digital PDFs?",
     "rubric": [
@@ -12,9 +12,9 @@ const cards=[
       "Explains end-to-end ownership",
       "Separates remembered facts from unknown details"
     ],
-    "cue": "Problem → four fields → end-to-end ownership",
+    "cue": "Tax documents → Orchestra → structured fields → validation",
     "reply": "Digital PDFs may contain embedded images or unreliable text. I would extract native text first and use OCR only where needed.",
-    "evidence": "User-confirmed scope plus résumé. Model size, training settings, hosting, exact savings methodology and historical incidents remain unverified.",
+    "evidence": "User correction: the bank workflow uses the internal tool Orchestra, not Qwen3. Previously supplied inputs, field examples, and ownership inform this summary. The underlying model, training interface, and historical fine-tuning method have not been confirmed.",
     "seconds": 45,
     "id": "legacy-0",
     "round": 1
@@ -22,9 +22,9 @@ const cards=[
   {
     "project": "bofa",
     "title": "Why an LLM at all?",
-    "q": "Why use Qwen 3 instead of rules or a spreadsheet parser?",
+    "q": "Why use AI through Orchestra instead of only rules or a spreadsheet parser?",
     "label": "Recommended approach",
-    "answer": "I would parse spreadsheets directly and extract native text from digital PDFs first. Qwen earns its place when layouts and field names vary enough that semantic interpretation helps. I would compare it with rules on the same held-out documents and judge field accuracy, review effort, latency, and cost. The model should handle ambiguity; ordinary parsing should stay deterministic.",
+    "answer": "I would parse reliable spreadsheet columns and native PDF text directly first. AI-assisted extraction through Orchestra can help map varied tax-document layouts and labels to a consistent set of required fields. I would compare it with a rules-based baseline on representative held-out documents, measuring field accuracy, reviewer effort, latency, and cost. Whether Orchestra exposes an LLM or another extraction model must be verified.",
     "hint": "Separate document parsing from semantic field mapping.",
     "trap": "If the spreadsheet already has a vendor column, why send it to an LLM?",
     "rubric": [
@@ -34,30 +34,34 @@ const cards=[
     ],
     "cue": "Parse first → model ambiguity → measure value",
     "reply": "If a vendor column is reliable, I would read it directly. Sending it through a model adds cost and another opportunity for error.",
-    "evidence": "Recommended design, not confirmed historical architecture. Use “I would” when discussing unverified details.",
+    "evidence": "Recommended explanation for the user-confirmed Orchestra workflow. Orchestra is a tool/platform name, not evidence of a particular model family.",
     "seconds": 45,
     "id": "legacy-1",
     "round": 1
   },
   {
     "project": "bofa",
-    "title": "Design the fine-tuning run",
-    "q": "You do not remember your training configuration. What would you choose today?",
+    "title": "Which fine-tuning fits tax-field extraction?",
+    "q": "For tax-document field extraction through Orchestra, which fine-tuning approach would you choose?",
     "label": "Recommended approach",
-    "answer": "I do not recall the exact training configuration. For this use case, I would benchmark a prompted Qwen baseline first, then try QLoRA if recurring extraction errors justify adaptation. I would train on document-to-JSON examples, include missing and ambiguous fields, and split by document family. The winning setup is the smallest one that meets field-accuracy, latency, and review requirements.",
+    "answer": "I would start with supervised fine-tuning, or SFT, if Orchestra supports model adaptation and a prompted baseline still makes recurring extraction errors. The training examples pair a tax document or its extracted content with a human-verified structured answer containing the required fields. SFT teaches the input-to-output task. If the underlying model supports adapters, LoRA is a practical way to perform SFT with fewer trainable parameters; QLoRA is an option when supported quantization is needed to reduce base-weight memory. The platform’s actual capabilities determine which method is available.",
     "hint": "Explain the choice, its constraints, and how you would validate it.",
-    "trap": "Why not start with full fine-tuning?",
+    "trap": "Can you fine-tune Orchestra itself with LoRA?",
     "rubric": [
-      "Clearly frames a proposed design",
-      "Explains frozen base and adapters",
-      "Addresses leakage and baseline comparison"
+      "Distinguishes SFT from LoRA and QLoRA",
+      "Checks platform support before choosing a method",
+      "Uses labeled extraction examples and evaluates against a baseline"
     ],
-    "cue": "Baseline → targeted adaptation → held-out fields",
-    "reply": "Full fine-tuning is more expensive. I would start with adapters and only increase training complexity if controlled evaluation shows a clear benefit.",
-    "evidence": "Qwen3 4B and 8B are possible experimental candidates, not remembered model sizes. No universal best size or invented training count.",
+    "cue": "SFT = learning task → LoRA = update method → Orchestra support",
+    "reply": "Orchestra is the internal tool. LoRA would adapt a compatible underlying model, if the platform exposes that capability. If it only offers an inference API, I would use its supported managed tuning option or improve prompts, document parsing, and validation.",
+    "evidence": "Recommended future approach, not a claim about a completed training run. User confirmed Orchestra and tax-field extraction; base model, access to weights, tuning support, and prior recipe are unknown.",
     "seconds": 45,
     "id": "legacy-2",
-    "round": 1
+    "round": 1,
+    "source": {
+      "title": "Supervised fine-tuning reference",
+      "url": "https://huggingface.co/docs/trl/sft_trainer"
+    }
   },
   {
     "project": "bofa",
@@ -144,7 +148,7 @@ const cards=[
     "title": "The architecture whiteboard",
     "q": "Design the tax-document pipeline for bursts, review, and safe reprocessing.",
     "label": "Recommended approach",
-    "answer": "I would separate ingestion, parsing, extraction, validation, review, and delivery. A durable queue absorbs bursts; versioned inputs and outputs support replay; idempotent delivery prevents duplicates. I would monitor queue age, field errors, review rate, latency, and cost. Before sizing workers, I would ask about peak traffic, document sizes, and the latency target.",
+    "answer": "I would separate ingestion, parsing, Orchestra-based extraction, validation, review, and delivery. A durable queue absorbs bursts; versioned inputs, prompts, and outputs support replay; idempotent delivery prevents duplicates. I would monitor field errors, review rate, queue age, latency, and cost. Before sizing workers or discussing training infrastructure, I would establish document volumes, service limits, and what Orchestra actually provides.",
     "hint": "Include recovery and human review, not just components.",
     "trap": "How do you reprocess a document without overwriting an approved correction?",
     "rubric": [
@@ -523,7 +527,7 @@ const cards=[
     "project": "experience",
     "title": "Tell me about yourself",
     "q": "Give me your introduction in 45 seconds.",
-    "answer": "I’m an AI engineer with a foundation in data engineering. At Bank of America, I build document-extraction and retrieval workflows, owning work from data preparation through APIs and user review. Earlier, I worked on Spark and Databricks pipelines at Sedin. My projects extend that experience into local AI and controlled automation. The common thread is turning model outputs into systems people can actually use.",
+    "answer": "I’m an AI engineer with a foundation in data engineering. At Bank of America, I work on tax-document field extraction using Orchestra, the bank’s internal tool, alongside retrieval workflows, owning work from data preparation through APIs and user review. Earlier, I worked on Spark and Databricks pipelines at Sedin. My projects extend that experience into local AI and controlled automation. The common thread is turning model outputs into systems people can actually use.",
     "cue": "AI role → data foundation → usable systems",
     "trap": "Why are you targeting AI engineering?",
     "reply": "I enjoy the boundary between models and software: choosing the task, preparing the data, evaluating behavior, and building reliable execution around it. My experience spans that full path.",
@@ -1415,13 +1419,13 @@ const cards=[
     "project": "behavior",
     "title": "Pressure: defend your ownership",
     "q": "You say you owned the workflow end to end. Be specific: what did you personally deliver?",
-    "answer": "At Bank of America, my scope included preparing extraction data, fine-tuning Qwen 3, integrating OCR and APIs, building validation, and delivering the review UI. I also worked directly with clients on the required fields and workflow. I would walk through one input document and show how those components produce a reviewed downstream result.",
+    "answer": "At Bank of America, I work on the tax-document extraction workflow using Orchestra. My scope includes preparing extraction data, integrating document processing and APIs, building validation, and delivering the review UI. I also work with stakeholders on required fields and review needs. I would trace one document through those components and identify which parts I implemented. I would describe model training only to the extent supported by the actual Orchestra setup and run artifacts.",
     "cue": "Scope → components → one concrete trace",
-    "trap": "What did the model vendor contribute?",
-    "reply": "Qwen supplied the pretrained foundation model. My work was adapting and integrating it for the extraction workflow; I would not describe that as pretraining the foundation model.",
+    "trap": "What did Orchestra provide, and what did you implement?",
+    "reply": "Orchestra is the bank’s internal tool used by the extraction workflow. I would distinguish the platform-provided capabilities from my data preparation, integrations, validation, and UI work. I would not identify an underlying model or claim a training method without confirming it.",
     "label": "Confirmed scope · pressure practice",
     "hint": "Build your answer around: Scope → components → one concrete trace",
-    "evidence": "Based on your supplied ownership details and résumé. Exact infrastructure, training recipe and numerical results should be verified before adding them.",
+    "evidence": "Updated to the user-confirmed Orchestra tool. Component ownership comes from earlier supplied context; underlying model and historical tuning method remain unconfirmed.",
     "rubric": [
       "Answered the actual question directly",
       "Explained the mechanism or tradeoff",
@@ -1534,11 +1538,11 @@ const cards=[
     "round": 4,
     "project": "behavior",
     "title": "Pressure: when you do not know",
-    "q": "I ask for the exact Qwen training settings and you cannot remember. How do you answer professionally?",
-    "answer": "I do not recall the exact configuration, and I would verify the run artifacts before quoting it. I can explain the task, data preparation, evaluation approach, and integration I worked on. If you want to explore design choices, I can also explain how I would select an adapter setup and validate it today.",
+    "q": "An interviewer asks which model and fine-tuning method Orchestra uses. How do you answer if those details are unconfirmed?",
+    "answer": "Orchestra is the bank’s internal tool that we use for extracting fields from tax documents. I can explain the workflow, required fields, data preparation, validation, and integrations I worked on. I would verify the underlying model and actual training artifacts before quoting a model name or tuning recipe. As a design recommendation, I would evaluate supervised fine-tuning on verified document-to-field examples if the platform supports it.",
     "cue": "State limit → explain known work → reason forward",
-    "trap": "Does not remembering mean you did not do the work?",
-    "reply": "Exact settings should be recoverable from artifacts. I would support ownership with the pipeline decisions and implementation details I do remember, while acknowledging the specific information I need to check.",
+    "trap": "Can you explain SFT without claiming you ran it?",
+    "reply": "Yes. SFT learns from labeled input-output pairs. For this task the input is document content and the target is a verified structured field record. That is the approach I would evaluate; it is distinct from asserting which technique was used historically.",
     "label": "Professional interview response",
     "hint": "Build your answer around: State limit → explain known work → reason forward",
     "evidence": "Do not substitute recommended hyperparameters for a historical configuration. Concise acknowledgment is stronger than an invented number.",
@@ -2170,7 +2174,7 @@ const cards=[
     "project": "behavior",
     "title": "Pressure: give your 90-second project story",
     "q": "Explain your most relevant AI project in 90 seconds, then defend two decisions.",
-    "answer": "I would structure my real example as: business problem and users; my exact ownership; data and model flow; one difficult engineering decision; evaluation and deployment; one limitation and next improvement. For the tax-extraction work, I can discuss digital PDFs and spreadsheets and extracting workflow IDs, dates, vendor, and amount. I must fill in only training settings, deployment facts, and outcomes I can substantiate.",
+    "answer": "I would structure my real example as: business problem and users; my exact ownership; data and model flow; one difficult engineering decision; evaluation and deployment; one limitation and next improvement. For the tax-extraction work using Orchestra, the bank’s internal tool, I can discuss digital PDFs and spreadsheets and extracting workflow IDs, dates, vendor, and amount. I must fill in only training settings, deployment facts, and outcomes I can substantiate.",
     "cue": "Problem → ownership → architecture → evidence → limitation",
     "trap": "What was the baseline behind the claimed savings?",
     "reply": "I would name the baseline workflow, sample, measurement period, and calculation. If the percentage was an estimate rather than a controlled result, I would say so and explain what evidence I do have.",
@@ -2181,6 +2185,66 @@ const cards=[
       "Answered directly and explained the mechanism",
       "Named a concrete failure case and a test",
       "Defended the tradeoff without inventing experience"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "orchestra-data",
+    "title": "Prepare tax-document training examples",
+    "q": "What would the training data for Orchestra-supported extraction look like?",
+    "answer": "Each example would contain a tax document’s content, a consistent extraction instruction and schema, and the correct structured fields verified by a reviewer. For example, a document stating “Vendor: Example Co; Amount: 125.00 USD” could map to {\"vendor\": \"Example Co\", \"amount\": \"125.00\", \"currency\": \"USD\"}. I would include missing fields, repeated entities, multiple dates, tables, poor scans, and corrected mistakes. Absent evidence maps to an explicit missing value. All data preparation and training would stay in the bank-approved environment.",
+    "cue": "Document + schema → verified fields → difficult cases",
+    "trap": "Would you create a separate training example for every tax value?",
+    "reply": "The goal is to learn extraction behavior, not memorize particular documents. Examples should cover varied structures and field relationships; evaluation must test new documents and templates.",
+    "round": 1,
+    "project": "bofa",
+    "label": "Recommended approach · Orchestra support required",
+    "hint": "Learn this sequence: Document + schema → verified fields → difficult cases",
+    "evidence": "Conceptual preparation for the Orchestra tax-extraction task. This does not identify Orchestra’s internal model or establish historical training work.",
+    "rubric": [
+      "Explains the mechanism clearly",
+      "Names an assumption or limit",
+      "Connects the answer to tax-field extraction"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "orchestra-eval",
+    "title": "Evaluate a tax-extraction fine-tune",
+    "q": "How would you decide whether fine-tuning improves the Orchestra workflow?",
+    "answer": "I would compare direct parsing, a prompted baseline, and the tuned candidate on the same held-out documents. I would split by document family or template and check duplicates to reduce leakage. Metrics include per-field exact match with agreed normalization, precision and recall for present fields, missing-field handling, whole-record correctness, vendor-amount association, schema validity, and review effort. I would report failures by document type and choose a candidate only if it improves the required quality without unacceptable latency or cost.",
+    "cue": "Independent holdout → baseline comparison → field and workflow quality",
+    "trap": "Training loss drops. Is that sufficient?",
+    "reply": "No. Lower token loss can reflect better formatting while important fields remain wrong. Selection needs held-out extraction and workflow metrics, with extra attention to high-impact errors such as incorrect amounts.",
+    "round": 1,
+    "project": "bofa",
+    "label": "Recommended approach · Orchestra support required",
+    "hint": "Learn this sequence: Independent holdout → baseline comparison → field and workflow quality",
+    "evidence": "Conceptual preparation for the Orchestra tax-extraction task. This does not identify Orchestra’s internal model or establish historical training work.",
+    "rubric": [
+      "Explains the mechanism clearly",
+      "Names an assumption or limit",
+      "Connects the answer to tax-field extraction"
+    ],
+    "seconds": 90
+  },
+  {
+    "id": "orchestra-choice",
+    "title": "SFT, LoRA, QLoRA: what changes?",
+    "q": "How do SFT, LoRA, and QLoRA relate, and would you use DPO or continued pretraining?",
+    "answer": "SFT is training on correct example responses. LoRA changes a model through small adapter matrices while freezing the base weights. QLoRA combines adapter training with a quantized frozen base to reduce memory used by base weights. You can therefore perform SFT using LoRA or QLoRA; they are not competing task objectives. For field extraction, labeled correct outputs are a direct starting point. Preference optimization such as DPO targets preference comparisons, while continued pretraining learns from domain text; neither replaces task-specific extraction examples or evaluation.",
+    "cue": "Objective: SFT → parameters: LoRA → memory: QLoRA",
+    "trap": "Is QLoRA automatically best for every bank system?",
+    "reply": "No. Model compatibility, bank policy, hardware, precision requirements, managed platform support, and measured extraction quality determine the choice. I would not assume Orchestra exposes adapter training.",
+    "round": 1,
+    "project": "bofa",
+    "label": "Recommended approach · Orchestra support required",
+    "hint": "Learn this sequence: Objective: SFT → parameters: LoRA → memory: QLoRA",
+    "evidence": "Conceptual preparation for the Orchestra tax-extraction task. This does not identify Orchestra’s internal model or establish historical training work.",
+    "rubric": [
+      "Explains the mechanism clearly",
+      "Names an assumption or limit",
+      "Connects the answer to tax-field extraction"
     ],
     "seconds": 90
   }

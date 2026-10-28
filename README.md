@@ -1,6 +1,6 @@
 # Interview Arena — Study mode
 
-Answers-first AI engineering interview preparation with 106 lessons across five rounds.
+Answers-first AI engineering interview preparation with 109 lessons across five rounds.
 
 - Answers, follow-up replies, evidence notes, and code solutions appear immediately.
 - No response boxes, reveal gates, countdown timers, mock sessions, or self-scoring in the study flow.
@@ -11,3 +11,5 @@ Answers-first AI engineering interview preparation with 106 lessons across five 
 Website: https://vashisht7.github.io/interview-arena/
 
 GitHub Pages serves the main branch root. Local preview: python3 -m http.server 8465.
+
+Bank project correction: Orchestra is the internal tax-document extraction tool. SFT and adapter training are proposed approaches subject to its capabilities; Qwen references belong to the separate NoteEchoes project.
