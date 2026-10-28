@@ -76,9 +76,9 @@ Score each area 0–3: 0 unable to explain; 1 remembers definitions; 2 gives a c
 - What evaluation and release criteria determine whether an AI change ships?
 - What would successful delivery in the first 90 days look like?
 
-## Use the answer bank actively
+## Start by reading the answers
 
-Answer first, then reveal the professional opening. Expand it with a concrete example and handle the pushback. The answers are guides, not scripts to present as your own experience. All new scenarios are labeled as proposed approaches.
+The site now shows every answer and follow-up immediately. Read the professional opening, memory cue, and reply at your own pace. Start with the introduction and main project in Round 1, then study Round 5. Treat the timed exercises above as optional later practice after you understand the material. The answers are guides, not scripts to present as your own experience. All new scenarios are labeled as proposed approaches.
 
 ## 1. MCP: explain the whole path
 
